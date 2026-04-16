@@ -30,7 +30,7 @@ export interface Template {
   published?: boolean;
 }
 
-export type DataSourceType = "mysql" | "postgresql" | "mongodb" | "api" | "csv" | "oracle" | "db2" | "mariadb" | "mongodb-bi" | "jiaguwen" | "sqlserver" | "tidb" | "clickhouse" | "doris" | "starrocks" | "hive" | "impala" | "presto" | "hbase" | "elasticsearch" | "kafka";
+export type DataSourceType = "mysql" | "postgresql" | "mongodb" | "api" | "csv" | "excel" | "oracle" | "db2" | "mariadb" | "mongodb-bi" | "jiaguwen" | "sqlserver" | "tidb" | "clickhouse" | "doris" | "starrocks" | "hive" | "impala" | "presto" | "hbase" | "elasticsearch" | "kafka";
 
 export interface DataSource {
   id: string;
@@ -44,9 +44,24 @@ export interface DataSource {
   password?: string;
   jdbcExtra?: string;
   connectionMethod?: "hostname" | "jdbc";
+  apiUrl?: string;
+  apiMethod?: "GET" | "POST" | "PUT" | "DELETE";
+  apiHeaders?: string;
+  apiBody?: string;
+  fileUrl?: string;
   creator?: string;
   status: "connected" | "disconnected" | "error";
   createdAt: string;
+}
+
+export interface CalculatedField {
+  id: string;
+  datasetId: string;
+  fieldName: string;
+  expression: string;
+  dataType: "integer" | "float";
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DataSet {
@@ -56,6 +71,7 @@ export interface DataSet {
   tableName?: string;
   query?: string;
   fields: string[];
+  calculatedFields: CalculatedField[];
   rowCount: number;
   createdAt: string;
   updatedAt: string;
@@ -85,6 +101,9 @@ interface DashboardContextType {
   addDataSet: (ds: Omit<DataSet, "id" | "createdAt" | "updatedAt">) => string;
   deleteDataSet: (id: string) => void;
   renameDataSet: (id: string, name: string) => void;
+  addCalculatedField: (datasetId: string, fieldName: string, expression: string, dataType: "integer" | "float") => string;
+  updateCalculatedField: (datasetId: string, id: string, updates: Partial<Omit<CalculatedField, "id" | "datasetId" | "createdAt">>) => void;
+  deleteCalculatedField: (datasetId: string, id: string) => void;
   setAsTemplate: (dashboardId: string) => void;
   removeTemplate: (templateId: string) => void;
   toggleTemplatePublish: (templateId: string) => void;
@@ -198,6 +217,28 @@ const initialDataSources: DataSource[] = [
     creator: "管理员",
     status: "connected",
     createdAt: "2026-01-10T08:00:00Z",
+  },
+  {
+    id: "ds-10",
+    name: "销售数据Excel",
+    type: "excel",
+    description: "销售数据Excel文件",
+    fileUrl: "sales_data.xlsx",
+    creator: "管理员",
+    status: "connected",
+    createdAt: "2026-03-05T08:00:00Z",
+  },
+  {
+    id: "ds-11",
+    name: "天气API",
+    type: "api",
+    description: "天气数据API",
+    apiUrl: "https://api.weather.com/v1/current",
+    apiMethod: "GET",
+    apiHeaders: '{"Content-Type": "application/json"}',
+    creator: "管理员",
+    status: "connected",
+    createdAt: "2026-03-10T08:00:00Z",
   },
   {
     id: "ds-2",
@@ -320,6 +361,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-6",
     tableName: "excel_Sheet1_ae2a87cf75",
     fields: ["能力1", "能力2", "能力3", "能力4", "能力5", "公司", "教育", "城市"],
+    calculatedFields: [],
     rowCount: 6407,
     createdAt: "2026-01-10T08:00:00Z",
     updatedAt: "2026-03-08T12:00:00Z",
@@ -330,6 +372,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-2",
     tableName: "user_events",
     fields: ["event_id", "user_id", "action", "timestamp", "page"],
+    calculatedFields: [],
     rowCount: 1283400,
     createdAt: "2026-01-15T08:00:00Z",
     updatedAt: "2026-03-09T06:00:00Z",
@@ -340,6 +383,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-3",
     tableName: "recruit_data",
     fields: ["sku", "name", "quantity", "warehouse", "updated_at"],
+    calculatedFields: [],
     rowCount: 8320,
     createdAt: "2026-02-01T08:00:00Z",
     updatedAt: "2026-03-07T18:00:00Z",
@@ -350,6 +394,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-4",
     tableName: "gdp_data",
     fields: ["year", "gdp", "growth_rate"],
+    calculatedFields: [],
     rowCount: 520,
     createdAt: "2026-02-05T08:00:00Z",
     updatedAt: "2026-03-06T10:00:00Z",
@@ -360,6 +405,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-1",
     tableName: "core_dataset_table",
     fields: ["id", "name", "type", "status"],
+    calculatedFields: [],
     rowCount: 3200,
     createdAt: "2026-02-10T08:00:00Z",
     updatedAt: "2026-03-05T14:00:00Z",
@@ -370,6 +416,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-5",
     tableName: "wxh_recruit",
     fields: ["position", "company", "salary", "city"],
+    calculatedFields: [],
     rowCount: 4500,
     createdAt: "2026-02-15T08:00:00Z",
     updatedAt: "2026-03-04T16:00:00Z",
@@ -380,6 +427,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-1",
     tableName: "base_user",
     fields: ["id", "username", "email"],
+    calculatedFields: [],
     rowCount: 1200,
     createdAt: "2026-02-20T08:00:00Z",
     updatedAt: "2026-03-03T12:00:00Z",
@@ -390,6 +438,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-8",
     tableName: "recruit_table",
     fields: ["id", "name", "score"],
+    calculatedFields: [],
     rowCount: 890,
     createdAt: "2026-02-25T08:00:00Z",
     updatedAt: "2026-03-02T09:00:00Z",
@@ -400,6 +449,7 @@ const initialDataSets: DataSet[] = [
     sourceId: "ds-9",
     tableName: "demo_table",
     fields: ["col1", "col2", "col3"],
+    calculatedFields: [],
     rowCount: 150,
     createdAt: "2026-03-01T08:00:00Z",
     updatedAt: "2026-03-01T10:00:00Z",
@@ -515,7 +565,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const addDataSet = useCallback((ds: Omit<DataSet, "id" | "createdAt" | "updatedAt">) => {
     const id = `dset-${Date.now()}`;
     const now = new Date().toISOString();
-    setDataSets((prev) => [...prev, { ...ds, id, createdAt: now, updatedAt: now }]);
+    setDataSets((prev) => [...prev, { ...ds, id, createdAt: now, updatedAt: now, calculatedFields: ds.calculatedFields || [] }]);
     return id;
   }, []);
 
@@ -525,6 +575,71 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
 
   const renameDataSet = useCallback((id: string, name: string) => {
     setDataSets((prev) => prev.map((d) => (d.id === id ? { ...d, name } : d)));
+  }, []);
+
+  const addCalculatedField = useCallback((datasetId: string, fieldName: string, expression: string, dataType: "integer" | "float") => {
+    const id = `calc-${Date.now()}`;
+    const now = new Date().toISOString();
+    setDataSets((prev) => prev.map((ds) => {
+      if (ds.id === datasetId) {
+        const newField = {
+          id,
+          datasetId,
+          fieldName,
+          expression,
+          dataType,
+          createdAt: now,
+          updatedAt: now
+        };
+        return {
+          ...ds,
+          calculatedFields: [...ds.calculatedFields, newField],
+          updatedAt: now
+        };
+      }
+      return ds;
+    }));
+    return id;
+  }, []);
+
+  const updateCalculatedField = useCallback((datasetId: string, id: string, updates: Partial<Omit<CalculatedField, "id" | "datasetId" | "createdAt">>) => {
+    const now = new Date().toISOString();
+    setDataSets((prev) => prev.map((ds) => {
+      if (ds.id === datasetId) {
+        const fieldIndex = ds.calculatedFields.findIndex((f) => f.id === id);
+        if (fieldIndex !== -1) {
+          const updatedFields = [...ds.calculatedFields];
+          updatedFields[fieldIndex] = {
+            ...updatedFields[fieldIndex],
+            ...updates,
+            updatedAt: now
+          };
+          return {
+            ...ds,
+            calculatedFields: updatedFields,
+            updatedAt: now
+          };
+        }
+      }
+      return ds;
+    }));
+  }, []);
+
+  const deleteCalculatedField = useCallback((datasetId: string, id: string) => {
+    const now = new Date().toISOString();
+    setDataSets((prev) => prev.map((ds) => {
+      if (ds.id === datasetId) {
+        const filteredFields = ds.calculatedFields.filter((f) => f.id !== id);
+        if (filteredFields.length !== ds.calculatedFields.length) {
+          return {
+            ...ds,
+            calculatedFields: filteredFields,
+            updatedAt: now
+          };
+        }
+      }
+      return ds;
+    }));
   }, []);
 
   const setAsTemplate = useCallback((dashboardId: string) => {
@@ -590,6 +705,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         addDataSet,
         deleteDataSet,
         renameDataSet,
+        addCalculatedField,
+        updateCalculatedField,
+        deleteCalculatedField,
         setAsTemplate,
         removeTemplate,
         toggleTemplatePublish,

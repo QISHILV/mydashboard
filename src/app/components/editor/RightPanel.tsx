@@ -12,9 +12,11 @@ const tabs = [
 interface RightPanelProps {
   selectedChartId: string | null;
   selectedChartType: string | null;
+  selectedChartConfig: any;
+  onUpdateChart: (updates: any) => void;
 }
 
-export function RightPanel({ selectedChartId, selectedChartType }: RightPanelProps) {
+export function RightPanel({ selectedChartId, selectedChartType, selectedChartConfig, onUpdateChart }: RightPanelProps) {
   const [activeTab, setActiveTab] = useState("customize");
 
   if (!selectedChartId) {
@@ -50,7 +52,7 @@ export function RightPanel({ selectedChartId, selectedChartType }: RightPanelPro
       <div className="flex-1 overflow-hidden">
         {activeTab === "customize" && <div className="h-full overflow-y-auto p-3"><CustomizePanel /></div>}
         {activeTab === "animation" && <div className="h-full overflow-y-auto p-3"><PlaceholderPanel label="动画" /></div>}
-        {activeTab === "data" && <DataPanel />}
+        {activeTab === "data" && <DataPanel selectedChartConfig={selectedChartConfig} onUpdateChart={onUpdateChart} />}
         {activeTab === "event" && <div className="h-full overflow-y-auto p-3"><PlaceholderPanel label="事件" /></div>}
       </div>
     </div>
@@ -298,20 +300,16 @@ function DropZone({
   );
 }
 
-function DataPanel() {
-  const [selectedDataset, setSelectedDataset] = useState<string>("school");
+function DataPanel({ selectedChartConfig, onUpdateChart }: { selectedChartConfig: any; onUpdateChart: (updates: any) => void }) {
+  const [selectedDataset, setSelectedDataset] = useState<string>(selectedChartConfig?.datasetId || "school");
   const [showDatasetMenu, setShowDatasetMenu] = useState(false);
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [refreshEnabled, setRefreshEnabled] = useState(true);
   const [refreshSeconds, setRefreshSeconds] = useState("5");
   const [fieldSearch, setFieldSearch] = useState("");
 
-  const [dimensionFields, setDimensionFields] = useState<FieldItem[]>([
-    { name: "店铺", aggregation: "求和", sort: "无" },
-  ]);
-  const [metricFields, setMetricFields] = useState<FieldItem[]>([
-    { name: "金额", aggregation: "求和", sort: "无" },
-  ]);
+  const [dimensionFields, setDimensionFields] = useState<FieldItem[]>(selectedChartConfig?.dimensions || []);
+  const [metricFields, setMetricFields] = useState<FieldItem[]>(selectedChartConfig?.metrics || []);
   const [drillFields, setDrillFields] = useState<FieldItem[]>([]);
 
   const datasets = [
@@ -323,9 +321,18 @@ function DataPanel() {
 
   const addField = (name: string, target: "dimension" | "metric" | "drill") => {
     const item: FieldItem = { name, aggregation: "求和", sort: "无" };
-    if (target === "dimension") setDimensionFields(prev => [...prev, item]);
-    else if (target === "metric") setMetricFields(prev => [...prev, item]);
-    else setDrillFields(prev => [...prev, item]);
+    if (target === "dimension") {
+      const newDimensions = [...dimensionFields, item];
+      setDimensionFields(newDimensions);
+      onUpdateChart({ dimensions: newDimensions });
+    } else if (target === "metric") {
+      const newMetrics = [...metricFields, item];
+      setMetricFields(newMetrics);
+      onUpdateChart({ metrics: newMetrics });
+    } else {
+      const newDrillFields = [...drillFields, item];
+      setDrillFields(newDrillFields);
+    }
   };
 
   const filteredDimensions = currentDataset?.dimensions.filter(d =>
@@ -368,8 +375,16 @@ function DataPanel() {
                 <div className="p-1 flex flex-col gap-1">
                   {dimensionFields.map((f, i) => (
                     <FieldTag key={i} field={f} isMetric={false}
-                      onDelete={() => setDimensionFields(prev => prev.filter((_, idx) => idx !== i))}
-                      onUpdate={(u) => setDimensionFields(prev => prev.map((x, idx) => idx === i ? { ...x, ...u } : x))} />
+                      onDelete={() => {
+                        const newDimensions = dimensionFields.filter((_, idx) => idx !== i);
+                        setDimensionFields(newDimensions);
+                        onUpdateChart({ dimensions: newDimensions });
+                      }}
+                      onUpdate={(u) => {
+                        const newDimensions = dimensionFields.map((x, idx) => idx === i ? { ...x, ...u } : x);
+                        setDimensionFields(newDimensions);
+                        onUpdateChart({ dimensions: newDimensions });
+                      }} />
                   ))}
                 </div>
               ) : (
@@ -393,8 +408,16 @@ function DataPanel() {
                 <div className="p-1 flex flex-col gap-1">
                   {metricFields.map((f, i) => (
                     <FieldTag key={i} field={f} isMetric={true}
-                      onDelete={() => setMetricFields(prev => prev.filter((_, idx) => idx !== i))}
-                      onUpdate={(u) => setMetricFields(prev => prev.map((x, idx) => idx === i ? { ...x, ...u } : x))} />
+                      onDelete={() => {
+                        const newMetrics = metricFields.filter((_, idx) => idx !== i);
+                        setMetricFields(newMetrics);
+                        onUpdateChart({ metrics: newMetrics });
+                      }}
+                      onUpdate={(u) => {
+                        const newMetrics = metricFields.map((x, idx) => idx === i ? { ...x, ...u } : x);
+                        setMetricFields(newMetrics);
+                        onUpdateChart({ metrics: newMetrics });
+                      }} />
                   ))}
                 </div>
               ) : (
@@ -418,8 +441,14 @@ function DataPanel() {
                 <div className="p-1 flex flex-col gap-1">
                   {drillFields.map((f, i) => (
                     <FieldTag key={i} field={f} isMetric={false} showSort={false}
-                      onDelete={() => setDrillFields(prev => prev.filter((_, idx) => idx !== i))}
-                      onUpdate={(u) => setDrillFields(prev => prev.map((x, idx) => idx === i ? { ...x, ...u } : x))} />
+                      onDelete={() => {
+                        const newDrillFields = drillFields.filter((_, idx) => idx !== i);
+                        setDrillFields(newDrillFields);
+                      }}
+                      onUpdate={(u) => {
+                        const newDrillFields = drillFields.map((x, idx) => idx === i ? { ...x, ...u } : x);
+                        setDrillFields(newDrillFields);
+                      }} />
                   ))}
                 </div>
               ) : (
@@ -487,10 +516,14 @@ function DataPanel() {
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded shadow-lg z-10">
                 {datasets.map(ds => (
                   <button
-                    key={ds.id}
-                    onClick={() => { setSelectedDataset(ds.id); setShowDatasetMenu(false); }}
-                    className="w-full px-2 py-1.5 text-left text-[11px] hover:bg-slate-50"
-                  >
+                  key={ds.id}
+                  onClick={() => { 
+                    setSelectedDataset(ds.id); 
+                    setShowDatasetMenu(false);
+                    onUpdateChart({ datasetId: ds.id });
+                  }}
+                  className="w-full px-2 py-1.5 text-left text-[11px] hover:bg-slate-50"
+                >
                     {ds.name}
                   </button>
                 ))}

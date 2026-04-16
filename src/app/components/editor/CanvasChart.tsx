@@ -54,23 +54,67 @@ interface CanvasChartProps {
   type: string;
   width: number;
   height: number;
+  datasetId?: string;
+  dimensions?: any[];
+  metrics?: any[];
 }
 
-export function CanvasChart({ type, width, height }: CanvasChartProps) {
+export function CanvasChart({ type, width, height, datasetId, dimensions, metrics }: CanvasChartProps) {
   const chartHeight = height - 8;
+  
+  // Generate dynamic data based on dimensions and metrics
+  const generateDynamicData = () => {
+    const baseData = [
+      { name: "1月", value1: 4000, value2: 2400, value3: 1800 },
+      { name: "2月", value1: 3000, value2: 1398, value3: 2200 },
+      { name: "3月", value1: 2000, value2: 4800, value3: 2800 },
+      { name: "4月", value1: 2780, value2: 3908, value3: 1900 },
+      { name: "5月", value1: 1890, value2: 4800, value3: 3200 },
+      { name: "6月", value1: 2390, value2: 3800, value3: 2500 },
+    ];
+    
+    if (!dimensions || !metrics || dimensions.length === 0 || metrics.length === 0) {
+      return baseData;
+    }
+    
+    // Use the first dimension as the x-axis
+    const xAxisField = dimensions[0].name;
+    
+    // Map metrics to data keys
+    return baseData.map((item, index) => {
+      const newItem: any = {};
+      newItem[xAxisField] = item.name;
+      
+      // Assign values to metrics
+      metrics.forEach((metric, metricIndex) => {
+        const valueKey = `value${metricIndex + 1}`;
+        newItem[metric.fieldName || metric.name] = item[valueKey] || 0;
+      });
+      
+      return newItem;
+    });
+  };
+  
+  const dynamicData = generateDynamicData();
 
   switch (type) {
     case "bar":
       return (
         <ResponsiveContainer width="100%" height={chartHeight}>
-          <BarChart data={barData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+          <BarChart data={dynamicData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#94a3b8" />
+            <XAxis dataKey={dimensions?.[0]?.name || "name"} tick={{ fontSize: 10 }} stroke="#94a3b8" />
             <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
             <Tooltip />
-            <Bar dataKey="value1" fill="#3b82f6" radius={[2, 2, 0, 0]} />
-            <Bar dataKey="value2" fill="#10b981" radius={[2, 2, 0, 0]} />
-            <Bar dataKey="value3" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+            {metrics?.map((metric, index) => (
+              <Bar key={index} dataKey={metric.fieldName || metric.name} fill={COLORS[index % COLORS.length]} radius={[2, 2, 0, 0]} />
+            )) || (
+              <>
+                <Bar dataKey="value1" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="value2" fill="#10b981" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="value3" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+              </>
+            )}
           </BarChart>
         </ResponsiveContainer>
       );

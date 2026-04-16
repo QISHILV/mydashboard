@@ -9,6 +9,13 @@ import { useDashboards } from "./DashboardContext";
 import { LeftPanel } from "./editor/LeftPanel";
 import { RightPanel } from "./editor/RightPanel";
 import { CanvasChart } from "./editor/CanvasChart";
+import { TabComponent } from "./editor/TabComponent";
+
+interface FieldItem {
+  name: string;
+  aggregation: string;
+  sort: string;
+}
 
 interface CanvasItem {
   id: string;
@@ -17,6 +24,17 @@ interface CanvasItem {
   y: number;
   width: number;
   height: number;
+  datasetId: string;
+  dimensions: FieldItem[];
+  metrics: FieldItem[];
+  filters: any[];
+}
+
+interface TabItem {
+  id: string;
+  name: string;
+  active: boolean;
+  canvasItems: CanvasItem[];
 }
 
 export function DashboardEditor() {
@@ -27,13 +45,22 @@ export function DashboardEditor() {
 
   const project = dashboard && dashboard.projectId ? projects.find((p) => p.id === dashboard.projectId) : null;
 
-  const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
+  const [tabs, setTabs] = useState<TabItem[]>([
+    {
+      id: "tab-1",
+      name: "标签页 1",
+      active: true,
+      canvasItems: [],
+    },
+  ]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [dragInfo, setDragInfo] = useState<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [resizeInfo, setResizeInfo] = useState<{ id: string; startX: number; startY: number; origW: number; origH: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
+  const activeTab = tabs.find((tab) => tab.active);
+  const canvasItems = activeTab?.canvasItems || [];
   const selectedItem = canvasItems.find((item) => item.id === selectedItemId);
 
   const handleAddChart = useCallback((chartType: string) => {
@@ -44,15 +71,36 @@ export function DashboardEditor() {
       y: 40 + Math.random() * 60,
       width: 420,
       height: 280,
+      datasetId: "school",
+      dimensions: [],
+      metrics: [],
+      filters: [],
     };
-    setCanvasItems((prev) => [...prev, newItem]);
+    setTabs((prev) => prev.map((tab) => {
+      if (tab.active) {
+        return {
+          ...tab,
+          canvasItems: [...tab.canvasItems, newItem],
+        };
+      }
+      return tab;
+    }));
     setSelectedItemId(newItem.id);
   }, []);
 
-  const handleDeleteSelected = useCallback(() => {
+ const handleDeleteSelected = useCallback(() => {
     if (selectedItemId) {
-      setCanvasItems((prev) => prev.filter((item) => item.id !== selectedItemId));
+      setTabs((prev) => prev.map((tab) => {
+        if (tab.active) {
+          return {
+            ...tab,
+            canvasItems: tab.canvasItems.filter((item) => item.id !== selectedItemId),
+          };
+        }
+        return tab;
+      }));
       setSelectedItemId(null);
+      setShowDeleteConfirm(false);
     }
   }, [selectedItemId]);
 
@@ -75,30 +123,98 @@ export function DashboardEditor() {
     if (dragInfo) {
       const dx = e.clientX - dragInfo.startX;
       const dy = e.clientY - dragInfo.startY;
-      setCanvasItems((prev) =>
-        prev.map((item) =>
-          item.id === dragInfo.id
-            ? { ...item, x: Math.max(0, dragInfo.origX + dx), y: Math.max(0, dragInfo.origY + dy) }
-            : item
-        )
-      );
+      setTabs((prev) => prev.map((tab) => {
+        if (tab.active) {
+          return {
+            ...tab,
+            canvasItems: tab.canvasItems.map((item) =>
+              item.id === dragInfo.id
+                ? { ...item, x: dragInfo.origX + dx, y: dragInfo.origY + dy }
+                : item
+            ),
+          };
+        }
+        return tab;
+      }));
     }
     if (resizeInfo) {
       const dx = e.clientX - resizeInfo.startX;
       const dy = e.clientY - resizeInfo.startY;
-      setCanvasItems((prev) =>
-        prev.map((item) =>
-          item.id === resizeInfo.id
-            ? { ...item, width: Math.max(200, resizeInfo.origW + dx), height: Math.max(150, resizeInfo.origH + dy) }
-            : item
-        )
-      );
+      setTabs((prev) => prev.map((tab) => {
+        if (tab.active) {
+          return {
+            ...tab,
+            canvasItems: tab.canvasItems.map((item) =>
+              item.id === resizeInfo.id
+                ? {
+                    ...item,
+                    width: Math.max(200, resizeInfo.origW + dx),
+                    height: Math.max(150, resizeInfo.origH + dy),
+                  }
+                : item
+            ),
+          };
+        }
+        return tab;
+      }));
     }
   }, [dragInfo, resizeInfo]);
 
   const handleMouseUp = useCallback(() => {
     setDragInfo(null);
     setResizeInfo(null);
+  }, []);
+
+  // Tab related methods
+  const handleTabChange = useCallback((tabId: string) => {
+    setTabs((prev) => prev.map((tab) => ({
+      ...tab,
+      active: tab.id === tabId,
+    })));
+    setSelectedItemId(null);
+  }, []);
+
+  const handleAddTab = useCallback(() => {
+    const newTab: TabItem = {
+      id: `tab-${Date.now()}`,
+      name: `标签页 ${tabs.length + 1}`,
+      active: true,
+      canvasItems: [],
+    };
+    setTabs((prev) => prev.map((tab) => ({
+      ...tab,
+      active: false,
+    })).concat(newTab));
+    setSelectedItemId(null);
+  }, [tabs.length]);
+
+  const handleRemoveTab = useCallback((tabId: string) => {
+    if (tabs.length === 1) return;
+    const tabToRemove = tabs.find((tab) => tab.id === tabId);
+    if (!tabToRemove) return;
+    
+    let newActiveTabId = tabs.find((tab) => tab.id !== tabId && tab.active)?.id;
+    if (!newActiveTabId) {
+      newActiveTabId = tabs.find((tab) => tab.id !== tabId)?.id;
+    }
+    
+    setTabs((prev) => prev.filter((tab) => tab.id !== tabId).map((tab) => ({
+      ...tab,
+      active: tab.id === newActiveTabId,
+    })));
+    setSelectedItemId(null);
+  }, [tabs]);
+
+  const handleRenameTab = useCallback((tabId: string, name: string) => {
+    setTabs((prev) => prev.map((tab) => {
+      if (tab.id === tabId) {
+        return {
+          ...tab,
+          name,
+        };
+      }
+      return tab;
+    }));
   }, []);
 
   if (!dashboard) {
@@ -136,7 +252,54 @@ export function DashboardEditor() {
           <button className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center" title="表格">
             <Table2 className="w-4 h-4" />
           </button>
-          <button className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center" title="导出">
+          <button 
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center" 
+            title="导出"
+            onClick={() => {
+              if (selectedItem) {
+                // 导出图表数据为CSV
+                const dimensions = selectedItem.dimensions || [];
+                const metrics = selectedItem.metrics || [];
+                
+                if (dimensions.length === 0 && metrics.length === 0) {
+                  alert("请先为图表添加维度和指标");
+                  return;
+                }
+                
+                // 生成模拟数据
+                const mockData = [
+                  { name: "1月", value1: 4000, value2: 2400, value3: 1800 },
+                  { name: "2月", value1: 3000, value2: 1398, value3: 2200 },
+                  { name: "3月", value1: 2000, value2: 4800, value3: 2800 },
+                  { name: "4月", value1: 2780, value2: 3908, value3: 1900 },
+                  { name: "5月", value1: 1890, value2: 4800, value3: 3200 },
+                  { name: "6月", value1: 2390, value2: 3800, value3: 2500 },
+                ];
+                
+                // 生成CSV内容
+                const headers = dimensions.map(d => d.name).concat(metrics.map(m => m.name));
+                const rows = mockData.map(item => {
+                  const row = dimensions.map(d => item.name); // 使用name作为维度值
+                  metrics.forEach((metric, index) => {
+                    row.push(item[`value${index + 1}`] || 0);
+                  });
+                  return row;
+                });
+                
+                const csvContent = [headers, ...rows].join("\n");
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.setAttribute("download", `图表数据-${Date.now()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              } else {
+                alert("请先选择一个图表组件");
+              }
+            }}
+          >
             <Download className="w-4 h-4" />
           </button>
           <div className="w-px h-5 bg-slate-200 mx-1.5" />
@@ -207,24 +370,34 @@ export function DashboardEditor() {
       </div>
 
       {/* Main body */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left panel */}
-        <LeftPanel onAddChart={handleAddChart} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Tab component */}
+        <TabComponent
+          tabs={tabs}
+          onTabChange={handleTabChange}
+          onAddTab={handleAddTab}
+          onRemoveTab={handleRemoveTab}
+          onRenameTab={handleRenameTab}
+        />
 
-        {/* Canvas */}
-        <div
-          ref={canvasRef}
-          className="flex-1 overflow-auto relative"
-          style={{
-            backgroundImage: "radial-gradient(circle, #d1d5db 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-            cursor: dragInfo ? "grabbing" : "default",
-          }}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onClick={() => setSelectedItemId(null)}
-        >
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left panel */}
+          <LeftPanel onAddChart={handleAddChart} />
+
+          {/* Canvas */}
+          <div
+            ref={canvasRef}
+            className="flex-1 overflow-auto relative"
+            style={{
+              backgroundImage: "radial-gradient(circle, #d1d5db 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
+              cursor: dragInfo ? "grabbing" : "default",
+            }}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onClick={() => setSelectedItemId(null)}
+          >
           {/* Canvas items */}
           {canvasItems.map((item) => {
             const isSelected = item.id === selectedItemId;
@@ -249,7 +422,14 @@ export function DashboardEditor() {
 
                 {/* Chart content */}
                 <div className="w-full h-full p-1 overflow-hidden">
-                  <CanvasChart type={item.type} width={item.width} height={item.height} />
+                  <CanvasChart 
+                    type={item.type} 
+                    width={item.width} 
+                    height={item.height} 
+                    datasetId={item.datasetId}
+                    dimensions={item.dimensions}
+                    metrics={item.metrics}
+                  />
                 </div>
 
                 {/* Resize handle */}
@@ -297,7 +477,21 @@ export function DashboardEditor() {
         <RightPanel
           selectedChartId={selectedItemId}
           selectedChartType={selectedItem?.type ?? null}
-        />
+          selectedChartConfig={selectedItem}
+          onUpdateChart={(updates) => {
+            setTabs((prev) => prev.map((tab) => {
+              if (tab.active) {
+                return {
+                  ...tab,
+                  canvasItems: tab.canvasItems.map((item) =>
+                    item.id === selectedItemId ? { ...item, ...updates } : item
+                  ),
+                };
+              }
+              return tab;
+            }));
+          }}
+        />        
       </div>
 
       {/* Publish Confirm Modal */}

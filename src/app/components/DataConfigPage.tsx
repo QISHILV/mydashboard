@@ -18,6 +18,7 @@ const typeDisplayMap: Record<DataSourceType, string> = {
   mongodb: "MongoDB",
   api: "API",
   csv: "CSV",
+  excel: "Excel",
   oracle: "Oracle",
   db2: "Db2",
   mariadb: "MariaDB",
@@ -59,6 +60,7 @@ function DataSourceIcon({ type, className = "w-4 h-4" }: { type: DataSourceType;
     kafka: "text-gray-700",
     api: "text-orange-500",
     csv: "text-green-500",
+    excel: "text-green-600",
     oracle: "text-red-500",
   };
   return <Database className={`${className} ${iconColors[type] || "text-slate-500"}`} />;
@@ -837,6 +839,7 @@ const dsTypeCategories = [
     name: "文件",
     types: [
       { type: "csv" as DataSourceType, label: "CSV" },
+      { type: "excel" as DataSourceType, label: "Excel" },
     ],
   },
 ];
@@ -865,6 +868,11 @@ export function CreateDataSourcePage() {
     username: "",
     password: "",
     jdbcExtra: "",
+    file: null as File | null,
+    apiUrl: "",
+    apiMethod: "GET" as "GET" | "POST" | "PUT" | "DELETE",
+    apiHeaders: "",
+    apiBody: "",
   });
   const [sshOpen, setSshOpen] = useState(false);
   const [sshEnabled, setSshEnabled] = useState(false);
@@ -894,17 +902,35 @@ export function CreateDataSourcePage() {
 
   const handleSave = () => {
     if (!form.name) return;
+    
+    // 对于Excel和CSV类型，不需要连接信息
+    if ((selectedType === "excel" || selectedType === "csv") && !form.file) {
+      alert("请选择文件");
+      return;
+    }
+    
+    // 对于API类型，需要URL
+    if (selectedType === "api" && !form.apiUrl) {
+      alert("请输入API URL");
+      return;
+    }
+    
     addDataSource({
       name: form.name,
       type: selectedType,
       description: form.description,
-      host: form.host,
-      port: form.port ? parseInt(form.port) : undefined,
-      database: form.database,
-      username: form.username,
-      password: form.password,
-      jdbcExtra: form.jdbcExtra,
-      connectionMethod: form.connectionMethod,
+      host: (selectedType !== "excel" && selectedType !== "csv" && selectedType !== "api") ? form.host : undefined,
+      port: (selectedType !== "excel" && selectedType !== "csv" && selectedType !== "api") ? (form.port ? parseInt(form.port) : undefined) : undefined,
+      database: (selectedType !== "excel" && selectedType !== "csv" && selectedType !== "api") ? form.database : undefined,
+      username: (selectedType !== "excel" && selectedType !== "csv" && selectedType !== "api") ? form.username : undefined,
+      password: (selectedType !== "excel" && selectedType !== "csv" && selectedType !== "api") ? form.password : undefined,
+      jdbcExtra: (selectedType !== "excel" && selectedType !== "csv" && selectedType !== "api") ? form.jdbcExtra : undefined,
+      connectionMethod: (selectedType !== "excel" && selectedType !== "csv" && selectedType !== "api") ? form.connectionMethod : undefined,
+      apiUrl: selectedType === "api" ? form.apiUrl : undefined,
+      apiMethod: selectedType === "api" ? form.apiMethod : undefined,
+      apiHeaders: selectedType === "api" ? form.apiHeaders : undefined,
+      apiBody: selectedType === "api" ? form.apiBody : undefined,
+      fileUrl: (selectedType === "excel" || selectedType === "csv") ? form.file?.name : undefined,
       creator: "管理员",
     });
     navigate("/data-config/data-sources");
@@ -1034,105 +1060,187 @@ export function CreateDataSourcePage() {
                     <div className="text-right text-[12px] text-slate-400 mt-0.5">{form.description.length}/50</div>
                   </div>
 
-                  {/* 连接方式 */}
-                  <div>
-                    <label className="text-[13px] text-slate-700 mb-2 block">连接方式</label>
-                    <div className="flex items-center gap-6">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="connMethod"
-                          checked={form.connectionMethod === "hostname"}
-                          onChange={() => setForm((f) => ({ ...f, connectionMethod: "hostname" }))}
-                          className="w-4 h-4 text-blue-500 accent-blue-500"
-                        />
-                        <span className="text-[13px] text-slate-700">主机名</span>
+                  {/* 对于Excel和CSV类型，显示文件上传 */}
+                  {(selectedType === "excel" || selectedType === "csv") && (
+                    <div>
+                      <label className="text-[13px] text-slate-700 mb-1.5 block">
+                        上传文件 <span className="text-red-500">*</span>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="connMethod"
-                          checked={form.connectionMethod === "jdbc"}
-                          onChange={() => setForm((f) => ({ ...f, connectionMethod: "jdbc" }))}
-                          className="w-4 h-4 text-blue-500 accent-blue-500"
-                        />
-                        <span className="text-[13px] text-slate-700">JDBC连接</span>
-                      </label>
+                      <input
+                        type="file"
+                        accept={selectedType === "excel" ? ".xlsx,.xls" : ".csv"}
+                        onChange={(e) => setForm((f) => ({ ...f, file: e.target.files?.[0] || null }))}
+                        className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 outline-none focus:border-blue-300 transition-all"
+                      />
+                      {form.file && (
+                        <div className="mt-2 text-[13px] text-slate-600">
+                          已选择文件: {form.file.name}
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  )}
 
-                  {/* 主机名/IP地址 */}
-                  <div>
-                    <label className="text-[13px] text-slate-700 mb-1.5 block">
-                      主机名/IP地址 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      value={form.host}
-                      onChange={(e) => setForm((f) => ({ ...f, host: e.target.value }))}
-                      placeholder="请输入主机名/IP地址"
-                      className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
-                    />
-                  </div>
+                  {/* 对于API类型，显示API配置 */}
+                  {selectedType === "api" && (
+                    <>
+                      {/* API URL */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">
+                          API URL <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          value={form.apiUrl}
+                          onChange={(e) => setForm((f) => ({ ...f, apiUrl: e.target.value }))}
+                          placeholder="请输入API URL"
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+                        />
+                      </div>
 
-                  {/* 端口 */}
-                  <div>
-                    <label className="text-[13px] text-slate-700 mb-1.5 block">
-                      端口 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={form.port}
-                      onChange={(e) => setForm((f) => ({ ...f, port: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 outline-none focus:border-blue-300 transition-all"
-                    />
-                  </div>
+                      {/* API 请求方法 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">请求方法</label>
+                        <select
+                          value={form.apiMethod}
+                          onChange={(e) => setForm((f) => ({ ...f, apiMethod: e.target.value as "GET" | "POST" | "PUT" | "DELETE" }))}
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 outline-none focus:border-blue-300 transition-all"
+                        >
+                          <option value="GET">GET</option>
+                          <option value="POST">POST</option>
+                          <option value="PUT">PUT</option>
+                          <option value="DELETE">DELETE</option>
+                        </select>
+                      </div>
 
-                  {/* 数据库名称 */}
-                  <div>
-                    <label className="text-[13px] text-slate-700 mb-1.5 block">
-                      数据库名称 <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      value={form.database}
-                      onChange={(e) => setForm((f) => ({ ...f, database: e.target.value }))}
-                      placeholder="请输入数据库名称"
-                      className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
-                    />
-                  </div>
+                      {/* API 请求头 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">请求头 (JSON格式)</label>
+                        <textarea
+                          value={form.apiHeaders}
+                          onChange={(e) => setForm((f) => ({ ...f, apiHeaders: e.target.value }))}
+                          placeholder='例如: {"Content-Type": "application/json"}'
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all font-mono"
+                        />
+                      </div>
 
-                  {/* 用户名 */}
-                  <div>
-                    <label className="text-[13px] text-slate-700 mb-1.5 block">用户名</label>
-                    <input
-                      value={form.username}
-                      onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-                      placeholder="请输入用户名"
-                      className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
-                    />
-                  </div>
+                      {/* API 请求体 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">请求体 (JSON格式)</label>
+                        <textarea
+                          value={form.apiBody}
+                          onChange={(e) => setForm((f) => ({ ...f, apiBody: e.target.value }))}
+                          placeholder='例如: {"key": "value"}'
+                          rows={4}
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all font-mono"
+                        />
+                      </div>
+                    </>
+                  )}
 
-                  {/* 密码 */}
-                  <div>
-                    <label className="text-[13px] text-slate-700 mb-1.5 block">密码</label>
-                    <input
-                      type="password"
-                      value={form.password}
-                      onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                      placeholder="请输入密码"
-                      className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
-                    />
-                  </div>
+                  {/* 对于数据库类型，显示连接信息 */}
+                  {(selectedType !== "excel" && selectedType !== "csv" && selectedType !== "api") && (
+                    <>
+                      {/* 连接方式 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-2 block">连接方式</label>
+                        <div className="flex items-center gap-6">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="connMethod"
+                              checked={form.connectionMethod === "hostname"}
+                              onChange={() => setForm((f) => ({ ...f, connectionMethod: "hostname" }))}
+                              className="w-4 h-4 text-blue-500 accent-blue-500"
+                            />
+                            <span className="text-[13px] text-slate-700">主机名</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="connMethod"
+                              checked={form.connectionMethod === "jdbc"}
+                              onChange={() => setForm((f) => ({ ...f, connectionMethod: "jdbc" }))}
+                              className="w-4 h-4 text-blue-500 accent-blue-500"
+                            />
+                            <span className="text-[13px] text-slate-700">JDBC连接</span>
+                          </label>
+                        </div>
+                      </div>
 
-                  {/* 额外的JDBC连接字符串 */}
-                  <div>
-                    <label className="text-[13px] text-slate-700 mb-1.5 block">额外的 JDBC 连接字符串</label>
-                    <input
-                      value={form.jdbcExtra}
-                      onChange={(e) => setForm((f) => ({ ...f, jdbcExtra: e.target.value }))}
-                      placeholder="请输入额外的 JDBC 连接字符串"
-                      className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
-                    />
-                  </div>
+                      {/* 主机名/IP地址 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">
+                          主机名/IP地址 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          value={form.host}
+                          onChange={(e) => setForm((f) => ({ ...f, host: e.target.value }))}
+                          placeholder="请输入主机名/IP地址"
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+                        />
+                      </div>
+
+                      {/* 端口 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">
+                          端口 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={form.port}
+                          onChange={(e) => setForm((f) => ({ ...f, port: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 outline-none focus:border-blue-300 transition-all"
+                        />
+                      </div>
+
+                      {/* 数据库名称 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">
+                          数据库名称 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          value={form.database}
+                          onChange={(e) => setForm((f) => ({ ...f, database: e.target.value }))}
+                          placeholder="请输入数据库名称"
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+                        />
+                      </div>
+
+                      {/* 用户名 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">用户名</label>
+                        <input
+                          value={form.username}
+                          onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                          placeholder="请输入用户名"
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+                        />
+                      </div>
+
+                      {/* 密码 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">密码</label>
+                        <input
+                          type="password"
+                          value={form.password}
+                          onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                          placeholder="请输入密码"
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+                        />
+                      </div>
+
+                      {/* 额外的JDBC连接字符串 */}
+                      <div>
+                        <label className="text-[13px] text-slate-700 mb-1.5 block">额外的 JDBC 连接字符串</label>
+                        <input
+                          value={form.jdbcExtra}
+                          onChange={(e) => setForm((f) => ({ ...f, jdbcExtra: e.target.value }))}
+                          placeholder="请输入额外的 JDBC 连接字符串"
+                          className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* SSH设置 */}
                   <div>
@@ -1415,11 +1523,14 @@ function getCreateTablesForSource(sourceId: string): Array<{ name: string; icon:
 
 // ============ DataSetsPage ============
 export function DataSetsPage() {
-  const { dataSets, dataSources, addDataSet, deleteDataSet, renameDataSet } = useDashboards();
+  const { dataSets, dataSources, addDataSet, deleteDataSet, renameDataSet, addCalculatedField, updateCalculatedField, deleteCalculatedField } = useDashboards();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDataSetId, setSelectedDataSetId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"preview" | "structure">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "structure" | "calculated">("preview");
+  const [showCalculatedFieldModal, setShowCalculatedFieldModal] = useState(false);
+  const [editingCalculatedField, setEditingCalculatedField] = useState<{id: string, fieldName: string, expression: string, dataType: "integer" | "float"} | null>(null);
+  const [calculatedFieldForm, setCalculatedFieldForm] = useState({fieldName: "", expression: "", dataType: "integer" as "integer" | "float"});
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   // More menu / rename / delete states
   const [moreMenuId, setMoreMenuId] = useState<string | null>(null);
@@ -1625,6 +1736,33 @@ export function DataSetsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => {
+                    // 导出数据集为CSV
+                    if (dsDetails) {
+                      const headers = dsDetails.fields.map((field) => field.name).join(",");
+                      const rows = dsDetails.rows.map((row) => {
+                        return dsDetails.fields.map((field) => {
+                          const value = row[field.name];
+                          return typeof value === "string" && value.includes(",") ? `"${value}"` : value;
+                        }).join(",");
+                      });
+                      const csvContent = [headers, ...rows].join("\n");
+                      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.setAttribute("download", `${selectedDS.name}.csv`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-[13px] hover:bg-slate-200 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  导出
+                </button>
+                <button
                   onClick={() => navigate("/data-config/data-sets/create")}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
                 >
@@ -1648,6 +1786,12 @@ export function DataSetsPage() {
                   className={`px-4 py-2.5 text-[14px] transition-all border-b-2 ${activeTab === "structure" ? "border-blue-500 text-blue-600 font-medium" : "border-transparent text-slate-500 hover:text-slate-700"}`}
                 >
                   结构预览
+                </button>
+                <button
+                  onClick={() => setActiveTab("calculated")}
+                  className={`px-4 py-2.5 text-[14px] transition-all border-b-2 ${activeTab === "calculated" ? "border-blue-500 text-blue-600 font-medium" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+                >
+                  计算字段
                 </button>
               </div>
             </div>
@@ -1717,6 +1861,90 @@ export function DataSetsPage() {
                   </div>
                 </div>
               )}
+
+              {activeTab === "calculated" && (
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[15px] text-slate-800 font-medium">计算字段管理</h3>
+                    <button
+                      onClick={() => {
+                        setEditingCalculatedField(null);
+                        setCalculatedFieldForm({fieldName: "", expression: "", dataType: "integer"});
+                        setShowCalculatedFieldModal(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      新增计算字段
+                    </button>
+                  </div>
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="px-6 py-3 text-left text-[13px] text-slate-600 font-medium">字段名称</th>
+                          <th className="px-6 py-3 text-left text-[13px] text-slate-600 font-medium">表达式</th>
+                          <th className="px-6 py-3 text-left text-[13px] text-slate-600 font-medium">数据类型</th>
+                          <th className="px-6 py-3 text-left text-[13px] text-slate-600 font-medium">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedDS.calculatedFields.map((field) => (
+                          <tr key={field.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                            <td className="px-6 py-3.5 text-[13px] text-slate-800">{field.fieldName}</td>
+                            <td className="px-6 py-3.5 text-[13px] text-slate-700 font-mono">{field.expression}</td>
+                            <td className="px-6 py-3.5 text-[13px] text-slate-800">
+                              {field.dataType === 'integer' ? '整数' : '浮点数'}
+                            </td>
+                            <td className="px-6 py-3.5">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingCalculatedField({
+                                      id: field.id,
+                                      fieldName: field.fieldName,
+                                      expression: field.expression,
+                                      dataType: field.dataType
+                                    });
+                                    setCalculatedFieldForm({
+                                      fieldName: field.fieldName,
+                                      expression: field.expression,
+                                      dataType: field.dataType
+                                    });
+                                    setShowCalculatedFieldModal(true);
+                                  }}
+                                  className="flex items-center gap-1 px-2.5 py-1 rounded text-[12px] text-blue-500 hover:bg-blue-50 transition-colors"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  编辑
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (selectedDataSetId) {
+                                      deleteCalculatedField(selectedDataSetId, field.id);
+                                    }
+                                  }}
+                                  className="flex items-center gap-1 px-2.5 py-1 rounded text-[12px] text-red-500 hover:bg-red-50 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  删除
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {selectedDS.calculatedFields.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-8 text-center text-[13px] text-slate-400">
+                              暂无计算字段，请点击上方按钮添加
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -1751,6 +1979,107 @@ export function DataSetsPage() {
                 className="px-4 py-1.5 rounded-md bg-red-500 text-white text-[13px] hover:bg-red-600 transition-colors"
               >
                 确认删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calculated Field Modal */}
+      {showCalculatedFieldModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-[500px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[16px] text-slate-800 font-medium">
+                {editingCalculatedField ? '编辑计算字段' : '新增计算字段'}
+              </h3>
+              <button
+                onClick={() => setShowCalculatedFieldModal(false)}
+                className="p-1 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[13px] text-slate-700 mb-1.5 block">
+                  字段名称 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={calculatedFieldForm.fieldName}
+                  onChange={(e) => setCalculatedFieldForm({...calculatedFieldForm, fieldName: e.target.value})}
+                  placeholder="请输入字段名称"
+                  className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-[13px] text-slate-700 mb-1.5 block">
+                  表达式 <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={calculatedFieldForm.expression}
+                  onChange={(e) => setCalculatedFieldForm({...calculatedFieldForm, expression: e.target.value})}
+                  placeholder="例如: price * quantity"
+                  rows={4}
+                  className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all font-mono"
+                />
+                <p className="text-[12px] text-slate-400 mt-1">
+                  支持使用现有字段和算术运算符 (+, -, *, /)
+                </p>
+              </div>
+              <div>
+                <label className="text-[13px] text-slate-700 mb-1.5 block">
+                  数据类型 <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="dataType"
+                      checked={calculatedFieldForm.dataType === 'integer'}
+                      onChange={() => setCalculatedFieldForm({...calculatedFieldForm, dataType: 'integer'})}
+                      className="w-4 h-4 text-blue-500 accent-blue-500"
+                    />
+                    <span className="text-[13px] text-slate-700">整数</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="dataType"
+                      checked={calculatedFieldForm.dataType === 'float'}
+                      onChange={() => setCalculatedFieldForm({...calculatedFieldForm, dataType: 'float'})}
+                      className="w-4 h-4 text-blue-500 accent-blue-500"
+                    />
+                    <span className="text-[13px] text-slate-700">浮点数</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setShowCalculatedFieldModal(false)}
+                className="px-4 py-1.5 rounded-md border border-slate-200 text-[13px] text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedDataSetId && calculatedFieldForm.fieldName && calculatedFieldForm.expression) {
+                    if (editingCalculatedField) {
+                      updateCalculatedField(selectedDataSetId, editingCalculatedField.id, {
+                        fieldName: calculatedFieldForm.fieldName,
+                        expression: calculatedFieldForm.expression,
+                        dataType: calculatedFieldForm.dataType
+                      });
+                    } else {
+                      addCalculatedField(selectedDataSetId, calculatedFieldForm.fieldName, calculatedFieldForm.expression, calculatedFieldForm.dataType);
+                    }
+                    setShowCalculatedFieldModal(false);
+                  }
+                }}
+                className="px-4 py-1.5 rounded-md bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
+              >
+                保存
               </button>
             </div>
           </div>
