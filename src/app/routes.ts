@@ -9,6 +9,7 @@ import { TemplatesRedirect } from "./components/TemplatesRedirect";
 import { DataConfigPage, DataSourcesPage, DataSetsPage, CreateDataSetPage, CreateDataSourcePage } from "./components/DataConfigPage";
 import { DashboardEditor } from "./components/DashboardEditor";
 import { PreviewPage } from "./components/PreviewPage";
+import { DownloadCenter } from "./components/system/DownloadCenter";
 
 export const router = createBrowserRouter(
   [
@@ -26,6 +27,7 @@ export const router = createBrowserRouter(
                 { path: "data-config/data-sources/create", Component: CreateDataSourcePage },
                 { path: "data-config/data-sets", Component: DataSetsPage },
                 { path: "data-config/data-sets/create", Component: CreateDataSetPage },
+                { path: "system/download-center", Component: DownloadCenter },
       ],
     },
     {

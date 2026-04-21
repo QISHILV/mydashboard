@@ -17,6 +17,8 @@ import {
   Table2,
   ShoppingBag,
   Settings,
+  Download,
+  FileText,
 } from "lucide-react";
 import { useDashboards } from "./DashboardContext";
 
@@ -29,6 +31,7 @@ export function Layout() {
   const [mySpaceOpen, setMySpaceOpen] = useState(true);
   const [dataConfigOpen, setDataConfigOpen] = useState(true);
   const [templateMarketOpen, setTemplateMarketOpen] = useState(true);
+  const [systemOpen, setSystemOpen] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // Inline new project in sidebar
   const [isCreatingProject, setIsCreatingProject] = useState(false);
@@ -279,7 +282,7 @@ export function Layout() {
             {templateMarketOpen && !sidebarCollapsed && (
               <div className="ml-4">
                 <NavLink
-                  to="/templates/market"
+                  to="/templates/config"
                   className={({ isActive }) =>
                     `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-[13px] ${isActive
                       ? "bg-blue-50 text-blue-600"
@@ -287,11 +290,11 @@ export function Layout() {
                       }`
                   }
                 >
-                  <ShoppingBag className="w-3.5 h-3.5" />
-                  <span>模板集市</span>
+                  <Settings className="w-3.5 h-3.5" />
+                  <span>我的模板</span>
                 </NavLink>
                 <NavLink
-                  to="/templates/config"
+                  to="/templates/market"
                   className={({ isActive }) =>
                     `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-[13px] mt-0.5 ${isActive
                       ? "bg-blue-50 text-blue-600"
@@ -299,8 +302,8 @@ export function Layout() {
                       }`
                   }
                 >
-                  <Settings className="w-3.5 h-3.5" />
-                  <span>模板配置</span>
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>模板集市</span>
                 </NavLink>
               </div>
             )}
@@ -349,6 +352,42 @@ export function Layout() {
                 >
                   <Table2 className="w-3.5 h-3.5" />
                   <span>数据集</span>
+                </NavLink>
+              </div>
+            )}
+          </div>
+
+          {/* System Management */}
+          <div className="mb-2">
+            <button
+              onClick={() => setSystemOpen(!systemOpen)}
+              className={`w-full flex items-center gap-2 px-2 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors ${!sidebarCollapsed ? 'justify-between' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                {!sidebarCollapsed && <span className="text-[14px] text-left">系统管理</span>}
+              </div>
+              {!sidebarCollapsed && (
+                systemOpen ? (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                )
+              )}
+            </button>
+            {systemOpen && !sidebarCollapsed && (
+              <div className="ml-4">
+                <NavLink
+                  to="/system/download-center"
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-[13px] ${isActive
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-slate-600 hover:bg-slate-50"
+                      }`
+                  }
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>下载中心</span>
                 </NavLink>
               </div>
             )}

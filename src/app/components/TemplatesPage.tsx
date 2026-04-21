@@ -59,9 +59,9 @@ export function TemplatesPage() {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <h2 className="text-slate-800">模板市场</h2>
+        <h2 className="text-slate-800">模板集市</h2>
         <p className="text-[14px] text-slate-500 mt-1">
-          选择预设模板快速创建仪表盘，按行业场景分类浏览
+          浏览和下载官方及社区共享的仪表盘模板，选择预设模板快速创建仪表盘，按行业场景分类浏览
         </p>
       </div>
 

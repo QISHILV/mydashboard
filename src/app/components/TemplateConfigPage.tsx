@@ -11,6 +11,9 @@ import {
   FileBarChart,
   Eye,
   Pencil,
+  X,
+  Upload,
+  Star,
 } from "lucide-react";
 import { ThumbnailPreview } from "./ThumbnailPreview";
 import { useDashboards, type Dashboard } from "./DashboardContext";
@@ -25,62 +28,212 @@ export function TemplateConfigPage() {
     toggleTemplatePublish,
   } = useDashboards();
 
-  const [activeTab, setActiveTab] = useState<"dashboards" | "templates">("dashboards");
+  const [activeTab, setActiveTab] = useState<"dashboards" | "templates" | "market">("dashboards");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeProjectFilter, setActiveProjectFilter] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImportFile(file);
+      // 模拟解析模板文件
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const content = event.target?.result as string;
+          const templateData = JSON.parse(content);
+          setImportPreview(templateData);
+        } catch (error) {
+          alert('无效的模板文件');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleImportTemplate = () => {
+    // 模拟导入模板
+    setShowImportModal(false);
+    setImportFile(null);
+    setImportPreview(null);
+    alert('模板导入成功');
+  };
 
   return (
     <div className="p-6 h-full flex flex-col">
       {/* Header */}
       <div className="mb-5">
-        <h2 className="text-slate-800">模板配置</h2>
+        <h2 className="text-2xl font-bold text-slate-800">我的模板</h2>
         <p className="text-[14px] text-slate-500 mt-1">
-          管理仪表盘模板，设置模板上架与下架
+          管理个人模板，可使用模板和导入其他模板
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5 w-fit mb-5">
+      {/* Search and import button */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="relative w-[300px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="搜索模板..."
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+          />
+        </div>
         <button
-          onClick={() => setActiveTab("dashboards")}
-          className={`px-4 py-2 rounded-md text-[13px] transition-all ${
-            activeTab === "dashboards"
-              ? "bg-white text-slate-800 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
+          onClick={() => setShowImportModal(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-blue-300 text-blue-500 text-[13px] hover:bg-blue-50 transition-colors"
         >
-          仪表盘列表
-        </button>
-        <button
-          onClick={() => setActiveTab("templates")}
-          className={`px-4 py-2 rounded-md text-[13px] transition-all ${
-            activeTab === "templates"
-              ? "bg-white text-slate-800 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          模板设置
+          <Upload className="w-3.5 h-3.5" />
+          导入模板
         </button>
       </div>
 
-      {activeTab === "dashboards" ? (
-        <DashboardListTab
-          dashboards={dashboards}
-          projects={projects}
-          templates={templates}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          activeProjectFilter={activeProjectFilter}
-          setActiveProjectFilter={setActiveProjectFilter}
-          setAsTemplate={setAsTemplate}
-        />
-      ) : (
-        <TemplateSettingsTab
-          templates={templates}
-          dashboards={dashboards}
-          toggleTemplatePublish={toggleTemplatePublish}
-          removeTemplate={removeTemplate}
-        />
+      {/* Template grid */}
+      <div className="flex-1 overflow-y-auto">
+        {(() => {
+          const filteredTemplates = templates.filter((template) =>
+            searchQuery ? template.name.toLowerCase().includes(searchQuery.toLowerCase()) : true
+          );
+          
+          if (filteredTemplates.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                <LayoutTemplate className="w-16 h-16 text-slate-200 mb-4" />
+                <p className="text-[14px]">暂无模板</p>
+                <p className="text-[13px] mt-1">您可以从模板集市下载模板或导入其他模板</p>
+              </div>
+            );
+          }
+          
+          return (
+            <div className="grid grid-cols-[repeat(auto-fill,280px)] gap-5">
+              {filteredTemplates.map((template) => {
+                const dateStr = new Date(template.createdAt).toLocaleDateString("zh-CN");
+                return (
+                  <div key={template.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                    {/* Header */}
+                    <div className="px-3 py-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                      <h4 className="truncate flex-1 text-[14px] text-slate-800" title={template.name}>
+                        {template.name}
+                      </h4>
+                      <span className="px-1.5 py-0.5 rounded text-[11px] bg-blue-50 text-blue-600 shrink-0">
+                        模板
+                      </span>
+                    </div>
+
+                    {/* Thumbnail */}
+                    <div className="h-[120px] overflow-hidden flex-shrink-0">
+                      <ThumbnailPreview type={template.thumbnail} />
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-3 py-2.5 border-t border-slate-100 flex items-center justify-between mt-auto">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[11px] text-slate-400">{template.category}</span>
+                        <span className="text-[11px] text-slate-400">{dateStr}</span>
+                      </div>
+                      <button
+                        onClick={() => alert('模板使用功能开发中')}
+                        className="px-3 py-1 rounded-md bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
+                      >
+                        使用模板
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-xl w-[500px] max-w-[90vw] max-h-[90vh] overflow-auto">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-lg font-medium text-slate-800">导入模板</h3>
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setImportPreview(null);
+                }}
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">上传模板文件</label>
+                <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                     onClick={() => document.getElementById('template-upload')?.click()}>
+                  <LayoutTemplate className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-600 mb-2">点击或拖拽文件到此处上传</p>
+                  <p className="text-sm text-slate-400">支持 .json 格式的模板文件</p>
+                  <input
+                    id="template-upload"
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </div>
+              </div>
+
+              {importPreview && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">模板预览</label>
+                  <div className="border border-slate-200 rounded-lg p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">模板名称</p>
+                        <p className="text-sm font-medium text-slate-800">{importPreview.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">分类</p>
+                        <p className="text-sm font-medium text-slate-800">{importPreview.category}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">创建时间</p>
+                        <p className="text-sm font-medium text-slate-800">{new Date(importPreview.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">组件数量</p>
+                        <p className="text-sm font-medium text-slate-800">{importPreview.config?.components?.length || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                <button
+                  onClick={() => {
+                    setShowImportModal(false);
+                    setImportFile(null);
+                    setImportPreview(null);
+                  }}
+                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleImportTemplate}
+                  disabled={!importFile}
+                  className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  导入模板
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -326,11 +479,13 @@ function TemplateSettingsTab({
   dashboards,
   toggleTemplatePublish,
   removeTemplate,
+  onImportClick,
 }: {
   templates: { id: string; name: string; description: string; thumbnail: "chart" | "table" | "kpi" | "mixed"; category: string; createdAt: string; fromDashboardId?: string; published?: boolean }[];
   dashboards: Dashboard[];
   toggleTemplatePublish: (id: string) => void;
   removeTemplate: (id: string) => void;
+  onImportClick: () => void;
 }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
@@ -341,76 +496,67 @@ function TemplateSettingsTab({
     return dashboards.find((d) => d.id === dashboardId)?.name || "已删除的仪表盘";
   };
 
-  if (userTemplates.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-        <LayoutTemplate className="w-16 h-16 text-slate-200 mb-4" />
-        <p className="text-[14px]">暂无自定义模板</p>
-        <p className="text-[13px] mt-1">在「仪表盘列表」中将仪表盘设为模板后，即可在此管理</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-slate-100 bg-slate-50">
-              <th className="text-left px-4 py-3 text-[13px] font-medium text-slate-600">模板名称</th>
-              <th className="text-left px-4 py-3 text-[13px] font-medium text-slate-600">来源仪表盘</th>
-              <th className="text-left px-4 py-3 text-[13px] font-medium text-slate-600">分类</th>
-              <th className="text-left px-4 py-3 text-[13px] font-medium text-slate-600">创建时间</th>
-              <th className="text-center px-4 py-3 text-[13px] font-medium text-slate-600">状态</th>
-              <th className="text-center px-4 py-3 text-[13px] font-medium text-slate-600">操作</th>
-            </tr>
-          </thead>
-          <tbody>
+    <div className="flex-1 flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[14px] font-medium text-slate-800">我的模板</h3>
+        <button
+          onClick={onImportClick}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-blue-300 text-blue-500 text-[13px] hover:bg-blue-50 transition-colors"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          导入模板
+        </button>
+      </div>
+
+      {userTemplates.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+          <LayoutTemplate className="w-16 h-16 text-slate-200 mb-4" />
+          <p className="text-[14px]">暂无自定义模板</p>
+          <p className="text-[13px] mt-1">在「仪表盘列表」中将仪表盘设为模板后，即可在此管理</p>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          <div className="grid grid-cols-[repeat(auto-fill,300px)] gap-5">
             {userTemplates.map((tpl) => {
               const dateStr = new Date(tpl.createdAt).toLocaleDateString("zh-CN");
               return (
-                <tr key={tpl.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <LayoutTemplate className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="text-[13px] text-slate-800 truncate max-w-[200px]">{tpl.name}</span>
+                <div key={tpl.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                  {/* Thumbnail */}
+                  <div className="h-[140px] overflow-hidden flex-shrink-0">
+                    <ThumbnailPreview type={tpl.thumbnail} />
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4 flex-1 flex flex-col">
+                    <h4 className="text-[14px] font-medium text-slate-800 mb-1">{tpl.name}</h4>
+                    <p className="text-[12px] text-slate-500 mb-3 line-clamp-2">{tpl.description}</p>
+                    
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-600">
+                        {tpl.category}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-[11px] ${
+                        tpl.published
+                          ? "bg-emerald-50 text-emerald-600"
+                          : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {tpl.published ? "已上架" : "未上架"}
+                      </span>
                     </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-[13px] text-slate-500">{getDashboardName(tpl.fromDashboardId)}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-[13px] text-slate-500">{tpl.category}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-[13px] text-slate-400">{dateStr}</span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[12px] ${
-                      tpl.published
-                        ? "bg-emerald-50 text-emerald-600"
-                        : "bg-slate-100 text-slate-500"
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${tpl.published ? "bg-emerald-500" : "bg-slate-400"}`} />
-                      {tpl.published ? "已上架" : "未上架"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-1">
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-4">
+                      <span>来源: {getDashboardName(tpl.fromDashboardId)}</span>
+                      <span>{dateStr}</span>
+                    </div>
+
+                    <div className="flex gap-2 mt-auto">
                       <button
-                        onClick={() => toggleTemplatePublish(tpl.id)}
-                        className={`p-1.5 rounded-md transition-colors ${
-                          tpl.published
-                            ? "hover:bg-amber-50 text-amber-600"
-                            : "hover:bg-emerald-50 text-emerald-600"
-                        }`}
-                        title={tpl.published ? "下架" : "上架"}
+                        onClick={() => alert('模板使用功能开发中')}
+                        className="flex-1 py-2 rounded-lg bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
                       >
-                        {tpl.published ? (
-                          <ArrowDownCircle className="w-4 h-4" />
-                        ) : (
-                          <ArrowUpCircle className="w-4 h-4" />
-                        )}
+                        使用模板
                       </button>
                       <button
                         onClick={() => {
@@ -422,26 +568,38 @@ function TemplateSettingsTab({
                           a.click();
                           URL.revokeObjectURL(url);
                         }}
-                        className="p-1.5 rounded-md hover:bg-blue-50 text-blue-600 transition-colors"
-                        title="导出"
+                        className="flex-1 py-2 rounded-lg border border-blue-300 text-blue-500 text-[13px] hover:bg-blue-50 transition-colors"
                       >
-                        <Download className="w-4 h-4" />
+                        下载模板
+                      </button>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-center gap-3 mt-3 pt-3 border-t border-slate-100">
+                      <button
+                        onClick={() => toggleTemplatePublish(tpl.id)}
+                        className={`text-[12px] px-2 py-1 rounded transition-colors ${
+                          tpl.published
+                            ? "hover:bg-amber-50 text-amber-600"
+                            : "hover:bg-emerald-50 text-emerald-600"
+                        }`}
+                      >
+                        {tpl.published ? "下架" : "上架"}
                       </button>
                       <button
                         onClick={() => setShowDeleteConfirm(tpl.id)}
-                        className="p-1.5 rounded-md hover:bg-red-50 text-red-500 transition-colors"
-                        title="删除模板"
+                        className="text-[12px] px-2 py-1 rounded hover:bg-red-50 text-red-500 transition-colors"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        删除
                       </button>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirm modal */}
       {showDeleteConfirm && (
@@ -477,6 +635,128 @@ function TemplateSettingsTab({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ===== Template Market Tab ===== */
+function TemplateMarketTab() {
+  // 模拟模板市场数据
+  const marketTemplates = [
+    {
+      id: "market-1",
+      name: "销售分析仪表盘",
+      description: "全面分析销售数据，包括销售额、订单量、客户分析等",
+      category: "通用",
+      thumbnail: "chart" as const,
+      rating: 4.8,
+      downloads: 1250,
+      author: "系统管理员",
+      createdAt: "2026-01-15",
+    },
+    {
+      id: "market-2",
+      name: "财务报表模板",
+      description: "财务数据可视化，包括收入、支出、利润分析",
+      category: "通用",
+      thumbnail: "table" as const,
+      rating: 4.6,
+      downloads: 980,
+      author: "财务部门",
+      createdAt: "2026-01-20",
+    },
+    {
+      id: "market-3",
+      name: "生产监控面板",
+      description: "生产设备状态监控，实时数据展示",
+      category: "智慧工厂",
+      thumbnail: "kpi" as const,
+      rating: 4.9,
+      downloads: 750,
+      author: "生产部门",
+      createdAt: "2026-01-25",
+    },
+    {
+      id: "market-4",
+      name: "能源消耗分析",
+      description: "能源使用情况分析，节能优化建议",
+      category: "能源管理",
+      thumbnail: "mixed" as const,
+      rating: 4.7,
+      downloads: 620,
+      author: "能源管理部",
+      createdAt: "2026-01-30",
+    },
+  ];
+
+  return (
+    <div className="flex-1 flex flex-col">
+      {/* Header */}
+      <div className="mb-4">
+        <h3 className="text-[14px] font-medium text-slate-800">模板集市</h3>
+        <p className="text-[13px] text-slate-500 mt-1">
+          浏览和下载官方及社区共享的仪表盘模板，一键使用模板快速创建仪表盘
+        </p>
+      </div>
+
+      {/* Search */}
+      <div className="relative w-[300px] mb-5">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input
+          placeholder="搜索模板..."
+          className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+        />
+      </div>
+
+      {/* Template grid */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="grid grid-cols-[repeat(auto-fill,300px)] gap-5">
+          {marketTemplates.map((template) => (
+            <div key={template.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+              {/* Thumbnail */}
+              <div className="h-[140px] overflow-hidden flex-shrink-0">
+                <ThumbnailPreview type={template.thumbnail} />
+              </div>
+
+              {/* Content */}
+              <div className="p-4 flex-1 flex flex-col">
+                <h4 className="text-[14px] font-medium text-slate-800 mb-1">{template.name}</h4>
+                <p className="text-[12px] text-slate-500 mb-3 line-clamp-2">{template.description}</p>
+                
+                <div className="flex items-center justify-between mb-2">
+                  <span className="px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-600">
+                    {template.category}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    <span className="text-[12px] text-slate-600">{template.rating}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-slate-400 mb-4">
+                  <span>作者: {template.author}</span>
+                  <span>下载: {template.downloads}</span>
+                </div>
+
+                <div className="flex gap-2 mt-auto">
+                  <button
+                    onClick={() => alert('模板使用功能开发中')}
+                    className="flex-1 py-2 rounded-lg bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
+                  >
+                    使用模板
+                  </button>
+                  <button
+                    onClick={() => alert('模板下载功能开发中')}
+                    className="flex-1 py-2 rounded-lg border border-blue-300 text-blue-500 text-[13px] hover:bg-blue-50 transition-colors"
+                  >
+                    下载模板
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

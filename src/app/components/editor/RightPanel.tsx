@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Trash2, ChevronDown, ChevronRight, Filter, Palette, Sparkles, BarChart3, Zap, Pencil, ArrowUpDown, Sigma, RotateCcw, Search } from "lucide-react";
+import { Trash2, ChevronDown, ChevronRight, Filter, Palette, Sparkles, BarChart3, Zap, Pencil, ArrowUpDown, Sigma, RotateCcw, Search, Plus, X, Info } from "lucide-react";
 import { FilterDialog } from "./FilterDialog";
 
 const tabs = [
   { id: "customize", label: "定制", Icon: Palette },
   { id: "animation", label: "动画", Icon: Sparkles },
   { id: "data", label: "数据", Icon: BarChart3 },
-  { id: "event", label: "事件", Icon: Zap },
+  { id: "advanced", label: "高级", Icon: Zap },
 ];
 
 interface RightPanelProps {
@@ -53,7 +53,7 @@ export function RightPanel({ selectedChartId, selectedChartType, selectedChartCo
         {activeTab === "customize" && <div className="h-full overflow-y-auto p-3"><CustomizePanel /></div>}
         {activeTab === "animation" && <div className="h-full overflow-y-auto p-3"><PlaceholderPanel label="动画" /></div>}
         {activeTab === "data" && <DataPanel selectedChartConfig={selectedChartConfig} onUpdateChart={onUpdateChart} />}
-        {activeTab === "event" && <div className="h-full overflow-y-auto p-3"><PlaceholderPanel label="事件" /></div>}
+        {activeTab === "advanced" && <div className="h-full overflow-y-auto p-3"><AdvancedPanel /></div>}
       </div>
     </div>
   );
@@ -602,10 +602,481 @@ function DataPanel({ selectedChartConfig, onUpdateChart }: { selectedChartConfig
   );
 }
 
+function ConditionalStylePanel() {
+  const [rules, setRules] = useState([
+    {
+      id: 1,
+      field: "金额",
+      condition: "大于",
+      value: "1000",
+      styles: {
+        textColor: "#ef4444",
+        backgroundColor: "#fef2f2",
+        borderColor: "#ef4444"
+      }
+    },
+    {
+      id: 2,
+      field: "金额",
+      condition: "小于",
+      value: "500",
+      styles: {
+        textColor: "#10b981",
+        backgroundColor: "#d1fae5",
+        borderColor: "#10b981"
+      }
+    }
+  ]);
+  const [showAddRule, setShowAddRule] = useState(false);
+  const [newRule, setNewRule] = useState({
+    field: "金额",
+    condition: "大于",
+    value: "",
+    styles: {
+      textColor: "#ef4444",
+      backgroundColor: "#fef2f2",
+      borderColor: "#ef4444"
+    }
+  });
+
+  const fields = ["金额", "数量", "记录数"];
+  const conditions = ["大于", "小于", "等于", "包含"];
+
+  const addRule = () => {
+    if (newRule.value) {
+      setRules([...rules, { ...newRule, id: Date.now() }]);
+      setShowAddRule(false);
+      setNewRule({
+        field: "金额",
+        condition: "大于",
+        value: "",
+        styles: {
+          textColor: "#ef4444",
+          backgroundColor: "#fef2f2",
+          borderColor: "#ef4444"
+        }
+      });
+    }
+  };
+
+  const deleteRule = (id: number) => {
+    setRules(rules.filter(rule => rule.id !== id));
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[12px] text-slate-800 font-medium">条件样式规则</h3>
+        <button
+          onClick={() => setShowAddRule(!showAddRule)}
+          className="text-[12px] text-blue-600 hover:text-blue-700 flex items-center gap-1"
+        >
+          <span>+ 添加规则</span>
+        </button>
+      </div>
+
+      {showAddRule && (
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div>
+              <label className="text-[11px] text-slate-600 mb-1 block">字段</label>
+              <select
+                value={newRule.field}
+                onChange={(e) => setNewRule({ ...newRule, field: e.target.value })}
+                className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+              >
+                {fields.map(field => (
+                  <option key={field} value={field}>{field}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-600 mb-1 block">条件</label>
+              <select
+                value={newRule.condition}
+                onChange={(e) => setNewRule({ ...newRule, condition: e.target.value })}
+                className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+              >
+                {conditions.map(condition => (
+                  <option key={condition} value={condition}>{condition}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="mb-3">
+            <label className="text-[11px] text-slate-600 mb-1 block">阈值</label>
+            <input
+              type="text"
+              value={newRule.value}
+              onChange={(e) => setNewRule({ ...newRule, value: e.target.value })}
+              placeholder="输入阈值"
+              className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div>
+              <label className="text-[11px] text-slate-600 mb-1 block">文字颜色</label>
+              <input
+                type="color"
+                value={newRule.styles.textColor}
+                onChange={(e) => setNewRule({ ...newRule, styles: { ...newRule.styles, textColor: e.target.value } })}
+                className="w-full h-7 border border-slate-200 rounded"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-600 mb-1 block">背景颜色</label>
+              <input
+                type="color"
+                value={newRule.styles.backgroundColor}
+                onChange={(e) => setNewRule({ ...newRule, styles: { ...newRule.styles, backgroundColor: e.target.value } })}
+                className="w-full h-7 border border-slate-200 rounded"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-600 mb-1 block">边框颜色</label>
+              <input
+                type="color"
+                value={newRule.styles.borderColor}
+                onChange={(e) => setNewRule({ ...newRule, styles: { ...newRule.styles, borderColor: e.target.value } })}
+                className="w-full h-7 border border-slate-200 rounded"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setShowAddRule(false)}
+              className="px-3 py-1.5 text-[12px] border border-slate-200 rounded hover:bg-slate-50"
+            >
+              取消
+            </button>
+            <button
+              onClick={addRule}
+              className="px-3 py-1.5 text-[12px] bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              保存规则
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {rules.map((rule, index) => (
+          <div key={rule.id} className="bg-white border border-slate-200 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-slate-500">规则 {index + 1}</span>
+              <button
+                onClick={() => deleteRule(rule.id)}
+                className="text-slate-400 hover:text-red-500"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="text-[12px] text-slate-700 mb-2">
+              {rule.field} {rule.condition} {rule.value}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[11px] text-slate-600 mb-1 block">文字颜色</label>
+                <div className="w-full h-6 rounded border border-slate-200" style={{ backgroundColor: rule.styles.textColor }} />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-600 mb-1 block">背景颜色</label>
+                <div className="w-full h-6 rounded border border-slate-200" style={{ backgroundColor: rule.styles.backgroundColor }} />
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-600 mb-1 block">边框颜色</label>
+                <div className="w-full h-6 rounded border border-slate-200" style={{ backgroundColor: rule.styles.borderColor }} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {rules.length === 0 && (
+        <div className="text-center py-8 text-slate-400 text-[12px]">
+          暂无条件样式规则
+          <p className="text-[11px] mt-1 text-slate-300">点击添加规则按钮创建第一条规则</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PlaceholderPanel({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-center h-full text-slate-400 text-[13px]">
       {label}配置（即将上线）
+    </div>
+  );
+}
+
+function AdvancedPanel() {
+  const [conditionalStyleEnabled, setConditionalStyleEnabled] = useState(false);
+  const [showConditionalStyleDialog, setShowConditionalStyleDialog] = useState(false);
+  const [conditions, setConditions] = useState([
+    {
+      id: 1,
+      field: "金额",
+      styles: [
+        {
+          id: 1,
+          condition: "等于",
+          value: "1",
+          textColor: "#ef4444",
+          backgroundColor: "#ef4444",
+          text: ""
+        },
+        {
+          id: 2,
+          condition: "等于",
+          value: "2",
+          textColor: "#f59e0b",
+          backgroundColor: "#f59e0b",
+          text: ""
+        },
+        {
+          id: 3,
+          condition: "等于",
+          value: "3",
+          textColor: "#10b981",
+          backgroundColor: "#10b981",
+          text: ""
+        }
+      ]
+    }
+  ]);
+
+  const addStyle = (conditionId: number) => {
+    setConditions(conditions.map(condition => {
+      if (condition.id === conditionId) {
+        return {
+          ...condition,
+          styles: [
+            ...condition.styles,
+            {
+              id: Date.now(),
+              condition: "等于",
+              value: "",
+              textColor: "#ef4444",
+              backgroundColor: "#ef4444",
+              text: ""
+            }
+          ]
+        };
+      }
+      return condition;
+    }));
+  };
+
+  const addCondition = () => {
+    setConditions([
+      ...conditions,
+      {
+        id: Date.now(),
+        field: "金额",
+        styles: []
+      }
+    ]);
+  };
+
+  const deleteStyle = (conditionId: number, styleId: number) => {
+    setConditions(conditions.map(condition => {
+      if (condition.id === conditionId) {
+        return {
+          ...condition,
+          styles: condition.styles.filter(style => style.id !== styleId)
+        };
+      }
+      return condition;
+    }));
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* 条件样式 */}
+      <div className="border border-slate-200 rounded-lg">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200">
+          <div className="flex items-center gap-2">
+            <ChevronDown className="w-4 h-4 text-slate-500" />
+            <span className="text-[12px] text-slate-700 font-medium">条件样式</span>
+          </div>
+          <button 
+            onClick={() => setConditionalStyleEnabled(!conditionalStyleEnabled)}
+            className={`w-8 h-[18px] rounded-full relative transition-colors ${conditionalStyleEnabled ? "bg-blue-500" : "bg-slate-300"}`}
+          >
+            <span className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full shadow-sm transition-transform ${conditionalStyleEnabled ? "right-0.5" : "left-0.5"}`} />
+          </button>
+        </div>
+        
+        {conditionalStyleEnabled && (
+          <div className="p-3">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[12px] text-slate-700">条件样式设置</span>
+              <button 
+                onClick={() => setShowConditionalStyleDialog(true)}
+                className="flex items-center gap-1 text-[12px] text-blue-600 hover:text-blue-700"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            
+            {conditions.length > 0 && (
+              <div className="space-y-4">
+                {conditions.map((condition) => (
+                  <div key={condition.id}>
+                    <div className="text-[12px] text-slate-700 font-medium mb-1"># {condition.field}</div>
+                    {condition.styles.map((style, index) => (
+                      <div key={style.id} className="flex items-center gap-2 text-[12px] text-slate-700">
+                        <span>{style.condition}</span>
+                        <span className="text-slate-500">固定值</span>
+                        <span>{style.value}</span>
+                        <div className="flex items-center gap-1 ml-auto">
+                          <div className="w-5 h-5 rounded border border-slate-200" style={{ backgroundColor: style.textColor }} />
+                          <div className="w-5 h-5 rounded border border-slate-200" style={{ backgroundColor: style.backgroundColor }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 条件样式对话框 */}
+      {showConditionalStyleDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-[600px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[16px] text-slate-800 font-medium">条件样式</h3>
+              <button 
+                onClick={() => setShowConditionalStyleDialog(false)}
+                className="p-1 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                <p className="text-[13px] text-blue-700">
+                  提示：请勿重复选择字段，若同一字段重复配置，则只有最后的字段配置生效
+                </p>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              {conditions.map((condition) => (
+                <div key={condition.id} className="space-y-4">
+                  {/* 字段选择 */}
+                  <div className="flex items-center justify-between">
+                    <select className="flex-1 h-8 px-3 border border-slate-200 rounded text-[13px] text-slate-700 outline-none focus:border-blue-300">
+                      <option value="amount" selected={condition.field === "金额"}>金额</option>
+                      <option value="quantity" selected={condition.field === "数量"}>数量</option>
+                      <option value="records" selected={condition.field === "记录数"}>记录数</option>
+                    </select>
+                  </div>
+                  
+                  {/* 条件列表 */}
+                  <div className="space-y-3">
+                    {condition.styles.map((style) => (
+                      <div key={style.id} className="flex items-center gap-2">
+                        <select className="w-20 h-8 px-2 border border-slate-200 rounded text-[13px] text-slate-700 outline-none focus:border-blue-300">
+                          <option value="equal" selected={style.condition === "等于"}>等于</option>
+                          <option value="greater" selected={style.condition === "大于"}>大于</option>
+                          <option value="less" selected={style.condition === "小于"}>小于</option>
+                          <option value="contains" selected={style.condition === "包含"}>包含</option>
+                        </select>
+                        <input 
+                          type="text" 
+                          value={style.value} 
+                          className="w-24 h-8 px-2 border border-slate-200 rounded text-[13px] text-slate-700 outline-none focus:border-blue-300"
+                        />
+                        <div className="flex items-center gap-1">
+                          <ArrowUpDown className="w-4 h-4 text-slate-500" />
+                        </div>
+                        <select className="w-24 h-8 px-2 border border-slate-200 rounded text-[13px] text-slate-700 outline-none focus:border-blue-300">
+                          <option value="self" selected>自己</option>
+                          <option value="parent">父级</option>
+                        </select>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[13px] text-slate-700">文字</span>
+                            <div 
+                              className="w-6 h-6 rounded border border-slate-200 cursor-pointer"
+                              style={{ backgroundColor: style.textColor }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[13px] text-slate-700">背景</span>
+                            <div 
+                              className="w-6 h-6 rounded border border-slate-200 cursor-pointer"
+                              style={{ backgroundColor: style.backgroundColor }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[13px] text-slate-700">文本</span>
+                            <input 
+                              type="text" 
+                              value={style.text} 
+                              className="w-24 h-8 px-2 border border-slate-200 rounded text-[13px] text-slate-700 outline-none focus:border-blue-300"
+                              placeholder="输入文本"
+                            />
+                          </div>
+                          <button 
+                            onClick={() => deleteStyle(condition.id, style.id)}
+                            className="p-1.5 rounded hover:bg-red-50 text-slate-500 hover:text-red-500"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* 添加样式按钮 */}
+                    <button 
+                      onClick={() => addStyle(condition.id)}
+                      className="flex items-center gap-1 text-[13px] text-blue-600 hover:text-blue-700"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>添加样式</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+              
+              {/* 添加条件按钮 */}
+              <button 
+                onClick={addCondition}
+                className="flex items-center gap-1 text-[13px] text-blue-600 hover:text-blue-700"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>添加条件</span>
+              </button>
+            </div>
+            
+            <div className="flex justify-end gap-2 mt-6">
+              <button 
+                onClick={() => setShowConditionalStyleDialog(false)}
+                className="px-4 py-1.5 rounded-md border border-slate-200 text-[13px] text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                取消
+              </button>
+              <button 
+                onClick={() => {
+                  setShowConditionalStyleDialog(false);
+                  // 保存条件样式
+                }}
+                className="px-4 py-1.5 rounded-md bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

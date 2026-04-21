@@ -1,15 +1,10 @@
 import React, { useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
-import {
-  Home, BarChart3, Table2, Download, Undo2, Redo2, LayoutGrid,
-  Eye, Play, Zap, Palette, Settings,
-  Trash2,
-} from "lucide-react";
+import { Home, BarChart3, Table2, Download, Undo2, Redo2, LayoutGrid, Eye, Play, Zap, Palette, Settings, Trash2, Copy, MoreHorizontal } from "lucide-react";
 import { useDashboards } from "./DashboardContext";
 import { LeftPanel } from "./editor/LeftPanel";
 import { RightPanel } from "./editor/RightPanel";
 import { CanvasChart } from "./editor/CanvasChart";
-import { TabComponent } from "./editor/TabComponent";
 
 interface FieldItem {
   name: string;
@@ -30,37 +25,21 @@ interface CanvasItem {
   filters: any[];
 }
 
-interface TabItem {
-  id: string;
-  name: string;
-  active: boolean;
-  canvasItems: CanvasItem[];
-}
-
 export function DashboardEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { projects, dashboards, renameDashboard, togglePublish } = useDashboards();
+  const { projects, dashboards, renameDashboard, togglePublish, addDownload, updateDownload } = useDashboards();
   const dashboard = dashboards.find((d) => d.id === id);
 
   const project = dashboard && dashboard.projectId ? projects.find((p) => p.id === dashboard.projectId) : null;
 
-  const [tabs, setTabs] = useState<TabItem[]>([
-    {
-      id: "tab-1",
-      name: "标签页 1",
-      active: true,
-      canvasItems: [],
-    },
-  ]);
+  const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [dragInfo, setDragInfo] = useState<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const [resizeInfo, setResizeInfo] = useState<{ id: string; startX: number; startY: number; origW: number; origH: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const activeTab = tabs.find((tab) => tab.active);
-  const canvasItems = activeTab?.canvasItems || [];
   const selectedItem = canvasItems.find((item) => item.id === selectedItemId);
 
   const handleAddChart = useCallback((chartType: string) => {
@@ -76,33 +55,82 @@ export function DashboardEditor() {
       metrics: [],
       filters: [],
     };
-    setTabs((prev) => prev.map((tab) => {
-      if (tab.active) {
-        return {
-          ...tab,
-          canvasItems: [...tab.canvasItems, newItem],
-        };
-      }
-      return tab;
-    }));
+    setCanvasItems((prev) => [...prev, newItem]);
     setSelectedItemId(newItem.id);
   }, []);
 
  const handleDeleteSelected = useCallback(() => {
     if (selectedItemId) {
-      setTabs((prev) => prev.map((tab) => {
-        if (tab.active) {
-          return {
-            ...tab,
-            canvasItems: tab.canvasItems.filter((item) => item.id !== selectedItemId),
-          };
-        }
-        return tab;
-      }));
+      setCanvasItems((prev) => prev.filter((item) => item.id !== selectedItemId));
       setSelectedItemId(null);
-      setShowDeleteConfirm(false);
     }
   }, [selectedItemId]);
+
+  const handleCopySelected = useCallback(() => {
+    if (selectedItem) {
+      const newItem: CanvasItem = {
+        ...selectedItem,
+        id: `item-${Date.now()}`,
+        x: selectedItem.x + 20,
+        y: selectedItem.y + 20,
+      };
+      setCanvasItems((prev) => [...prev, newItem]);
+      setSelectedItemId(newItem.id);
+    }
+  }, [selectedItem]);
+
+  const handleExportSelected = useCallback(() => {
+    if (selectedItem) {
+      // 模拟导出操作
+      const newDownload = {
+        fileName: `图表数据-${selectedItem.type}`,
+        format: 'Excel',
+        downloadTime: new Date().toLocaleString(),
+        operator: '管理员',
+        status: '下载中',
+      };
+      
+      // 添加到下载中心
+      const downloadId = addDownload(newDownload);
+      
+      // 模拟下载完成
+      setTimeout(() => {
+        updateDownload(downloadId, { status: '已完成' });
+      }, 2000);
+      
+      // 生成模拟数据并下载
+      const dimensions = selectedItem.dimensions || [];
+      const metrics = selectedItem.metrics || [];
+      
+      const mockData = [
+        { name: "1月", value1: 4000, value2: 2400, value3: 1800 },
+        { name: "2月", value1: 3000, value2: 1398, value3: 2200 },
+        { name: "3月", value1: 2000, value2: 4800, value3: 2800 },
+        { name: "4月", value1: 2780, value2: 3908, value3: 1900 },
+        { name: "5月", value1: 1890, value2: 4800, value3: 3200 },
+        { name: "6月", value1: 2390, value2: 3800, value3: 2500 },
+      ];
+      
+      const headers = dimensions.map(d => d.name).concat(metrics.map(m => m.name));
+      const rows = mockData.map(item => {
+        const row = dimensions.map(d => item.name);
+        metrics.forEach((metric, index) => {
+          row.push(item[`value${index + 1}`] || 0);
+        });
+        return row;
+      });
+      
+      const csvContent = [headers, ...rows].join("\n");
+      const blob = new Blob([csvContent], { type: "application/vnd.ms-excel" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `图表数据-${Date.now()}.xls`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }, [selectedItem]);
 
   const handleMouseDown = (e: React.MouseEvent, itemId: string) => {
     e.stopPropagation();
@@ -123,98 +151,30 @@ export function DashboardEditor() {
     if (dragInfo) {
       const dx = e.clientX - dragInfo.startX;
       const dy = e.clientY - dragInfo.startY;
-      setTabs((prev) => prev.map((tab) => {
-        if (tab.active) {
-          return {
-            ...tab,
-            canvasItems: tab.canvasItems.map((item) =>
-              item.id === dragInfo.id
-                ? { ...item, x: dragInfo.origX + dx, y: dragInfo.origY + dy }
-                : item
-            ),
-          };
-        }
-        return tab;
-      }));
+      setCanvasItems((prev) => prev.map((item) =>
+        item.id === dragInfo.id
+          ? { ...item, x: dragInfo.origX + dx, y: dragInfo.origY + dy }
+          : item
+      ));
     }
     if (resizeInfo) {
       const dx = e.clientX - resizeInfo.startX;
       const dy = e.clientY - resizeInfo.startY;
-      setTabs((prev) => prev.map((tab) => {
-        if (tab.active) {
-          return {
-            ...tab,
-            canvasItems: tab.canvasItems.map((item) =>
-              item.id === resizeInfo.id
-                ? {
-                    ...item,
-                    width: Math.max(200, resizeInfo.origW + dx),
-                    height: Math.max(150, resizeInfo.origH + dy),
-                  }
-                : item
-            ),
-          };
-        }
-        return tab;
-      }));
+      setCanvasItems((prev) => prev.map((item) =>
+        item.id === resizeInfo.id
+          ? {
+              ...item,
+              width: Math.max(200, resizeInfo.origW + dx),
+              height: Math.max(150, resizeInfo.origH + dy),
+            }
+          : item
+      ));
     }
   }, [dragInfo, resizeInfo]);
 
   const handleMouseUp = useCallback(() => {
     setDragInfo(null);
     setResizeInfo(null);
-  }, []);
-
-  // Tab related methods
-  const handleTabChange = useCallback((tabId: string) => {
-    setTabs((prev) => prev.map((tab) => ({
-      ...tab,
-      active: tab.id === tabId,
-    })));
-    setSelectedItemId(null);
-  }, []);
-
-  const handleAddTab = useCallback(() => {
-    const newTab: TabItem = {
-      id: `tab-${Date.now()}`,
-      name: `标签页 ${tabs.length + 1}`,
-      active: true,
-      canvasItems: [],
-    };
-    setTabs((prev) => prev.map((tab) => ({
-      ...tab,
-      active: false,
-    })).concat(newTab));
-    setSelectedItemId(null);
-  }, [tabs.length]);
-
-  const handleRemoveTab = useCallback((tabId: string) => {
-    if (tabs.length === 1) return;
-    const tabToRemove = tabs.find((tab) => tab.id === tabId);
-    if (!tabToRemove) return;
-    
-    let newActiveTabId = tabs.find((tab) => tab.id !== tabId && tab.active)?.id;
-    if (!newActiveTabId) {
-      newActiveTabId = tabs.find((tab) => tab.id !== tabId)?.id;
-    }
-    
-    setTabs((prev) => prev.filter((tab) => tab.id !== tabId).map((tab) => ({
-      ...tab,
-      active: tab.id === newActiveTabId,
-    })));
-    setSelectedItemId(null);
-  }, [tabs]);
-
-  const handleRenameTab = useCallback((tabId: string, name: string) => {
-    setTabs((prev) => prev.map((tab) => {
-      if (tab.id === tabId) {
-        return {
-          ...tab,
-          name,
-        };
-      }
-      return tab;
-    }));
   }, []);
 
   if (!dashboard) {
@@ -254,10 +214,10 @@ export function DashboardEditor() {
           </button>
           <button 
             className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center" 
-            title="导出"
+            title="导出为Excel"
             onClick={() => {
               if (selectedItem) {
-                // 导出图表数据为CSV
+                // 导出图表数据为Excel
                 const dimensions = selectedItem.dimensions || [];
                 const metrics = selectedItem.metrics || [];
                 
@@ -276,7 +236,7 @@ export function DashboardEditor() {
                   { name: "6月", value1: 2390, value2: 3800, value3: 2500 },
                 ];
                 
-                // 生成CSV内容
+                // 生成CSV内容（Excel兼容）
                 const headers = dimensions.map(d => d.name).concat(metrics.map(m => m.name));
                 const rows = mockData.map(item => {
                   const row = dimensions.map(d => item.name); // 使用name作为维度值
@@ -287,11 +247,11 @@ export function DashboardEditor() {
                 });
                 
                 const csvContent = [headers, ...rows].join("\n");
-                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const blob = new Blob([csvContent], { type: "application/vnd.ms-excel" });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.href = url;
-                link.setAttribute("download", `图表数据-${Date.now()}.csv`);
+                link.setAttribute("download", `图表数据-${Date.now()}.xls`);
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -370,19 +330,9 @@ export function DashboardEditor() {
       </div>
 
       {/* Main body */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Tab component */}
-        <TabComponent
-          tabs={tabs}
-          onTabChange={handleTabChange}
-          onAddTab={handleAddTab}
-          onRemoveTab={handleRemoveTab}
-          onRenameTab={handleRenameTab}
-        />
-
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left panel */}
-          <LeftPanel onAddChart={handleAddChart} />
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left panel */}
+        <LeftPanel onAddChart={handleAddChart} />
 
           {/* Canvas */}
           <div
@@ -445,14 +395,33 @@ export function DashboardEditor() {
                   </div>
                 )}
 
-                {/* Delete button on selection */}
+                {/* Hanging bubble window with quick actions */}
                 {isSelected && (
-                  <button
-                    className="absolute -top-3 -right-3 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 z-30"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteSelected(); }}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  <div className="absolute -top-3 -right-3 z-30">
+                    <div className="flex flex-col gap-1">
+                      <button
+                        className="w-8 h-8 rounded-md bg-blue-500 text-white flex items-center justify-center shadow-md hover:bg-blue-600 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleCopySelected(); }}
+                        title="复制"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        className="w-8 h-8 rounded-md bg-green-500 text-white flex items-center justify-center shadow-md hover:bg-green-600 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleExportSelected(); }}
+                        title="导出"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                      <button
+                        className="w-8 h-8 rounded-md bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteSelected(); }}
+                        title="删除"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             );
@@ -479,17 +448,9 @@ export function DashboardEditor() {
           selectedChartType={selectedItem?.type ?? null}
           selectedChartConfig={selectedItem}
           onUpdateChart={(updates) => {
-            setTabs((prev) => prev.map((tab) => {
-              if (tab.active) {
-                return {
-                  ...tab,
-                  canvasItems: tab.canvasItems.map((item) =>
-                    item.id === selectedItemId ? { ...item, ...updates } : item
-                  ),
-                };
-              }
-              return tab;
-            }));
+            setCanvasItems((prev) => prev.map((item) =>
+              item.id === selectedItemId ? { ...item, ...updates } : item
+            ));
           }}
         />        
       </div>

@@ -240,6 +240,37 @@ export function CanvasChart({ type, width, height, datasetId, dimensions, metric
         </ResponsiveContainer>
       );
 
+    case "batch-container":
+      return (
+        <div className="w-full h-full p-4">
+          <div className="flex flex-wrap gap-2 w-full h-full">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <div key={item} className="flex-1 min-w-[28%] aspect-square bg-blue-500 rounded-lg flex items-center justify-center text-white">
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+    case "tab-bar":
+      return (
+        <div className="w-full h-full flex flex-col">
+          <div className="flex bg-slate-200 rounded-t-lg p-1">
+            {["日", "周", "月", "年"].map((tab, index) => (
+              <div key={index} className={`flex-1 text-center py-1.5 text-sm rounded ${index === 0 ? 'bg-blue-500 text-white' : 'text-slate-700'}`}>
+                {tab}
+              </div>
+            ))}
+          </div>
+          <div className="flex-1 bg-white rounded-b-lg flex items-center justify-center">
+            <div className="w-[80%] h-[80%] bg-blue-100 rounded-lg flex items-center justify-center">
+              <span className="text-slate-500 text-sm">标签栏联动内容</span>
+            </div>
+          </div>
+        </div>
+      );
+
     default:
       return (
         <div className="flex items-center justify-center h-full text-slate-400 text-[13px]">

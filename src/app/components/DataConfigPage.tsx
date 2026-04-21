@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { useDashboards, DataSet, DataSource, DataSourceType } from "./DashboardContext";
-import { Table2, Plus, Search, Database, X, ChevronRight, ChevronDown, ChevronUp, ChevronLeft, FileText, Copy, Trash2, Eye, Info, Edit3, Shield, FolderPlus, Check, PlayCircle, SlidersHorizontal, MoreHorizontal, Pencil } from "lucide-react";
+import { Table2, Plus, Search, Database, X, ChevronRight, ChevronDown, ChevronUp, ChevronLeft, FileText, Copy, Trash2, Eye, Info, Edit3, Shield, FolderPlus, Check, PlayCircle, SlidersHorizontal, MoreHorizontal, Pencil, Download } from "lucide-react";
 import { useNavigate } from "react-router";
 
 export function DataConfigPage() {
@@ -1737,6 +1737,16 @@ export function DataSetsPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
+                    // 刷新数据
+                    alert('刷新数据功能开发中');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-100 text-slate-700 text-[13px] hover:bg-slate-200 transition-colors"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  刷新数据
+                </button>
+                <button
+                  onClick={() => {
                     // 导出数据集为CSV
                     if (dsDetails) {
                       const headers = dsDetails.fields.map((field) => field.name).join(",");
@@ -1786,12 +1796,6 @@ export function DataSetsPage() {
                   className={`px-4 py-2.5 text-[14px] transition-all border-b-2 ${activeTab === "structure" ? "border-blue-500 text-blue-600 font-medium" : "border-transparent text-slate-500 hover:text-slate-700"}`}
                 >
                   结构预览
-                </button>
-                <button
-                  onClick={() => setActiveTab("calculated")}
-                  className={`px-4 py-2.5 text-[14px] transition-all border-b-2 ${activeTab === "calculated" ? "border-blue-500 text-blue-600 font-medium" : "border-transparent text-slate-500 hover:text-slate-700"}`}
-                >
-                  计算字段
                 </button>
               </div>
             </div>
@@ -2095,6 +2099,8 @@ export function CreateDataSetPage() {
   const [tableSearch, setTableSearch] = useState("");
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<"preview" | "batch">("preview");
+  const [showCalculatedFieldModal, setShowCalculatedFieldModal] = useState(false);
+  const [calculatedFieldForm, setCalculatedFieldForm] = useState({fieldName: "", expression: "", dataType: "integer" as "integer" | "float"});
 
   // SQL editor state
   const [sqlEditorMode, setSqlEditorMode] = useState(false);
@@ -2869,6 +2875,13 @@ export function CreateDataSetPage() {
                 </button>
               </div>
               <div className="flex items-center gap-2">
+                <button 
+                    onClick={() => setShowCalculatedFieldModal(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-200 text-[13px] text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    新建字段（计算）
+                  </button>
                 <button className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-200 text-[13px] text-slate-600 hover:bg-slate-50 transition-colors">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 8a6 6 0 0110.89-3.48" /><path d="M14 8a6 6 0 01-10.89 3.48" /><path d="M12.89 4.52L14 2v3h-3" /><path d="M3.11 11.48L2 14v-3h3" /></svg>
                   刷新数据
@@ -3085,6 +3098,162 @@ export function CreateDataSetPage() {
           </div>
         </div>
       </div>
+
+      {/* Calculated Field Modal */}
+      {showCalculatedFieldModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-[800px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[16px] text-slate-800 font-medium">
+                新建计算字段
+              </h3>
+              <button
+                onClick={() => setShowCalculatedFieldModal(false)}
+                className="p-1 rounded-md hover:bg-slate-100 text-slate-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-12 gap-6">
+              {/* Left Column */}
+              <div className="col-span-6 space-y-4">
+                {/* 字段名称 */}
+                <div>
+                  <label className="text-[13px] text-slate-700 mb-1.5 block">
+                    字段名称 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={calculatedFieldForm.fieldName}
+                    onChange={(e) => setCalculatedFieldForm({...calculatedFieldForm, fieldName: e.target.value})}
+                    placeholder="请输入字段名称"
+                    className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all"
+                  />
+                </div>
+                
+                {/* 数据类型和字段类型 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[13px] text-slate-700 mb-1.5 block">数据类型</label>
+                    <div className="flex gap-2">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name="dataType" checked className="w-4 h-4 text-blue-500 accent-blue-500" />
+                        <span className="text-[13px] text-slate-700">维度</span>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name="dataType" className="w-4 h-4 text-blue-500 accent-blue-500" />
+                        <span className="text-[13px] text-slate-700">指标</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[13px] text-slate-700 mb-1.5 block">字段类型</label>
+                    <select className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 outline-none focus:border-blue-300 transition-all">
+                      <option value="text">T 文本</option>
+                      <option value="number"># 数值</option>
+                      <option value="date">时间</option>
+                    </select>
+                  </div>
+                </div>
+                
+                {/* 字段表达式 */}
+                <div>
+                  <label className="text-[13px] text-slate-700 mb-1.5 block">
+                    字段表达式 <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={calculatedFieldForm.expression}
+                    onChange={(e) => setCalculatedFieldForm({...calculatedFieldForm, expression: e.target.value})}
+                    placeholder="请输入表达式"
+                    rows={6}
+                    className="w-full px-3 py-2 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all font-mono"
+                  />
+                </div>
+              </div>
+              
+              {/* Right Column */}
+              <div className="col-span-6 space-y-4">
+                {/* 字段引用 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-[13px] text-slate-700 font-medium">点击引用字段</h4>
+                    <Info className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <div className="mb-2">
+                    <input placeholder="通过名称搜索" className="w-full px-3 py-1.5 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all" />
+                  </div>
+                  <div className="border border-slate-200 rounded-md p-3 max-h-[200px] overflow-y-auto">
+                    <div className="mb-3">
+                      <h5 className="text-[12px] text-slate-500 mb-2">维度</h5>
+                      {['年份', '最大的年'].map((field) => (
+                        <div key={field} className="flex items-center gap-2 mb-1.5 p-1.5 rounded hover:bg-slate-50 cursor-pointer" onClick={() => setCalculatedFieldForm({...calculatedFieldForm, expression: calculatedFieldForm.expression + field})}>
+                          <span className="text-blue-500 text-[11px]">T</span>
+                          <span className="text-[13px] text-slate-700">{field}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <h5 className="text-[12px] text-slate-500 mb-2">指标</h5>
+                      {['国民总收入(亿元)', '国内生产总值(亿元)', '第一产业增加值(亿元)', '第二产业增加值(亿元)', '第三产业增加值(亿元)', '人均国内生产总值(元)'].map((field) => (
+                        <div key={field} className="flex items-center gap-2 mb-1.5 p-1.5 rounded hover:bg-slate-50 cursor-pointer" onClick={() => setCalculatedFieldForm({...calculatedFieldForm, expression: calculatedFieldForm.expression + field})}>
+                          <span className="text-green-500 text-[11px]">#</span>
+                          <span className="text-[13px] text-slate-700">{field}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 函数引用 */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-[13px] text-slate-700 font-medium">点击引用函数</h4>
+                    <Info className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <div className="mb-2">
+                    <input placeholder="通过名称搜索" className="w-full px-3 py-1.5 rounded-md border border-slate-200 text-[13px] text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-300 transition-all" />
+                  </div>
+                  <div className="border border-slate-200 rounded-md p-3 max-h-[200px] overflow-y-auto">
+                    {['SUBSTRING(s,n,len)', 'ABS(x)', 'CEIL(x)', 'FLOOR(x)', 'ROUND(x)', 'ROUND(x,y)', 'COUNT(x)', 'SUM(x)', 'AVG(x)', 'MAX(x)', 'MIN(x)'].map((func) => (
+                      <div key={func} className="mb-1.5 p-1.5 rounded hover:bg-slate-50 cursor-pointer" onClick={() => setCalculatedFieldForm({...calculatedFieldForm, expression: calculatedFieldForm.expression + func})}>
+                        <span className="text-[13px] text-slate-700">{func}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setShowCalculatedFieldModal(false)}
+                className="px-4 py-1.5 rounded-md border border-slate-200 text-[13px] text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={() => {
+                  // 校验表达式
+                  alert('校验成功！');
+                }}
+                className="px-4 py-1.5 rounded-md border border-slate-200 text-[13px] text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                校验
+              </button>
+              <button
+                onClick={() => {
+                  if (calculatedFieldForm.fieldName && calculatedFieldForm.expression) {
+                    // 这里可以添加保存计算字段的逻辑
+                    alert('计算字段创建成功！');
+                    setShowCalculatedFieldModal(false);
+                  }
+                }}
+                className="px-4 py-1.5 rounded-md bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

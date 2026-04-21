@@ -4,7 +4,7 @@ export interface ChartTypeInfo {
   id: string;
   name: string;
   category: string;
-  type: "bar" | "horizontal-bar" | "bar-line" | "capsule-bar" | "line" | "area" | "pie" | "donut" | "scatter" | "radar" | "map";
+  type: "bar" | "horizontal-bar" | "bar-line" | "capsule-bar" | "line" | "area" | "pie" | "donut" | "scatter" | "radar" | "map" | "batch-container" | "tab-bar";
 }
 
 export const chartTypes: ChartTypeInfo[] = [
@@ -18,6 +18,8 @@ export const chartTypes: ChartTypeInfo[] = [
   { id: "donut", name: "环形图", category: "饼图", type: "donut" },
   { id: "scatter", name: "散点图", category: "散点图", type: "scatter" },
   { id: "radar", name: "雷达图", category: "散点图", type: "radar" },
+  { id: "batch-container", name: "批量容器", category: "更多", type: "batch-container" },
+  { id: "tab-bar", name: "标签栏联动", category: "更多", type: "tab-bar" },
 ];
 
 interface ChartMiniPreviewProps {
@@ -44,6 +46,8 @@ export function ChartMiniPreview({ type }: ChartMiniPreviewProps) {
       {type === "donut" && <DonutPreview />}
       {type === "scatter" && <ScatterPreview />}
       {type === "radar" && <RadarPreview />}
+      {type === "batch-container" && <BatchContainerPreview />}
+      {type === "tab-bar" && <TabBarPreview />}
     </div>
   );
 }
@@ -175,6 +179,37 @@ function RadarPreview() {
         <polygon points="30,10 50,23 44,46 16,46 10,23" fill="#6366f1" fillOpacity="0.3" stroke="#6366f1" strokeWidth="1" />
         <polygon points="30,18 42,26 38,40 22,40 18,26" fill="#10b981" fillOpacity="0.3" stroke="#10b981" strokeWidth="1" />
       </svg>
+    </div>
+  );
+}
+
+function BatchContainerPreview() {
+  return (
+    <div className="w-full h-[75%] flex items-center justify-center">
+      <div className="flex flex-wrap gap-2 w-[80%] h-[80%]">
+        {[1, 2, 3, 4, 5, 6].map((item) => (
+          <div key={item} className="flex-1 min-w-[28%] aspect-square bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs">
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TabBarPreview() {
+  return (
+    <div className="w-full h-[75%] flex flex-col">
+      <div className="flex bg-slate-700 rounded-t-lg p-1">
+        {["日", "周", "月", "年"].map((tab, index) => (
+          <div key={index} className={`flex-1 text-center py-1.5 text-xs rounded ${index === 0 ? 'bg-blue-500 text-white' : 'text-slate-300'}`}>
+            {tab}
+          </div>
+        ))}
+      </div>
+      <div className="flex-1 bg-slate-800 rounded-b-lg flex items-center justify-center">
+        <div className="w-[60%] h-[60%] bg-blue-500 rounded-lg" />
+      </div>
     </div>
   );
 }

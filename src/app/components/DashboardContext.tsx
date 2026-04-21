@@ -28,6 +28,13 @@ export interface Template {
   createdAt: string;
   fromDashboardId?: string;
   published?: boolean;
+  creator?: string;
+  config?: {
+    layout: any;
+    components: any[];
+    styles: any;
+    datasets: string[];
+  };
 }
 
 export type DataSourceType = "mysql" | "postgresql" | "mongodb" | "api" | "csv" | "excel" | "oracle" | "db2" | "mariadb" | "mongodb-bi" | "jiaguwen" | "sqlserver" | "tidb" | "clickhouse" | "doris" | "starrocks" | "hive" | "impala" | "presto" | "hbase" | "elasticsearch" | "kafka";
@@ -52,6 +59,21 @@ export interface DataSource {
   creator?: string;
   status: "connected" | "disconnected" | "error";
   createdAt: string;
+  excelOptions?: {
+    includeHeader: boolean;
+    startRow: number;
+    dateFormat: string;
+    sheets: string[];
+    selectedSheet: string;
+  };
+  apiOptions?: {
+    authType: "none" | "basic" | "apikey" | "token";
+    username?: string;
+    password?: string;
+    apiKey?: string;
+    token?: string;
+    jsonPath?: string;
+  };
 }
 
 export interface CalculatedField {
@@ -62,6 +84,15 @@ export interface CalculatedField {
   dataType: "integer" | "float";
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Download {
+  id: string;
+  fileName: string;
+  format: string;
+  downloadTime: string;
+  operator: string;
+  status: string;
 }
 
 export interface DataSet {
@@ -84,6 +115,7 @@ interface DashboardContextType {
   templateCategories: TemplateCategory[];
   dataSources: DataSource[];
   dataSets: DataSet[];
+  downloads: Download[];
   addProject: (name: string) => string;
   renameProject: (id: string, name: string) => void;
   deleteProject: (id: string) => void;
@@ -108,6 +140,9 @@ interface DashboardContextType {
   removeTemplate: (templateId: string) => void;
   toggleTemplatePublish: (templateId: string) => void;
   getUserTemplates: () => Template[];
+  addDownload: (download: Omit<Download, "id">) => string;
+  updateDownload: (id: string, updates: Partial<Download>) => void;
+  deleteDownload: (id: string) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -462,6 +497,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
   const [dataSources, setDataSources] = useState<DataSource[]>(initialDataSources);
   const [dataSets, setDataSets] = useState<DataSet[]>(initialDataSets);
+  const [downloads, setDownloads] = useState<Download[]>([]);
 
   const addProject = useCallback((name: string) => {
     const id = `proj-${Date.now()}`;
@@ -679,6 +715,20 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     return templates.filter((t) => t.fromDashboardId);
   }, [templates]);
 
+  const addDownload = useCallback((download: Omit<Download, "id">) => {
+    const id = `download-${Date.now()}`;
+    setDownloads((prev) => [...prev, { ...download, id }]);
+    return id;
+  }, []);
+
+  const updateDownload = useCallback((id: string, updates: Partial<Download>) => {
+    setDownloads((prev) => prev.map((download) => (download.id === id ? { ...download, ...updates } : download)));
+  }, []);
+
+  const deleteDownload = useCallback((id: string) => {
+    setDownloads((prev) => prev.filter((download) => download.id !== id));
+  }, []);
+
   return (
     <DashboardContext.Provider
       value={{
@@ -688,6 +738,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         templateCategories,
         dataSources,
         dataSets,
+        downloads,
         addProject,
         renameProject,
         deleteProject,
@@ -712,6 +763,9 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         removeTemplate,
         toggleTemplatePublish,
         getUserTemplates,
+        addDownload,
+        updateDownload,
+        deleteDownload,
       }}
     >
       {children}

@@ -43,12 +43,20 @@ export function TemplateCard({ template, onUse }: TemplateCardProps) {
         <p className="text-[12px] text-slate-500 mb-2 line-clamp-2">{template.description}</p>
         <div className="flex items-center justify-between">
           <span className="text-[11px] text-slate-400">创建于 {dateStr}</span>
-          <button
-            onClick={() => onUse(template)}
-            className="px-3 py-1 rounded-md bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
-          >
-            使用模板
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onUse(template)}
+              className="px-3 py-1 rounded-md bg-blue-500 text-white text-[13px] hover:bg-blue-600 transition-colors"
+            >
+              使用模板
+            </button>
+            <button
+              onClick={() => alert('模板下载功能开发中')}
+              className="px-3 py-1 rounded-md border border-blue-300 text-blue-500 text-[13px] hover:bg-blue-50 transition-colors"
+            >
+              下载模板
+            </button>
+          </div>
         </div>
       </div>
     </div>
