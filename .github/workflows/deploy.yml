@@ -36,7 +36,7 @@ jobs:
       - name: Build with Vite
         run: npm run build
         env:
-          BASE_URL: /Dashboard/
+          BASE_URL: /mydashboard/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
