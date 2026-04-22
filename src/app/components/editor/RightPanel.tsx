@@ -50,10 +50,18 @@ export function RightPanel({ selectedChartId, selectedChartType, selectedChartCo
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "customize" && <div className="h-full overflow-y-auto p-3"><CustomizePanel /></div>}
-        {activeTab === "animation" && <div className="h-full overflow-y-auto p-3"><PlaceholderPanel label="动画" /></div>}
-        {activeTab === "data" && <DataPanel selectedChartConfig={selectedChartConfig} onUpdateChart={onUpdateChart} />}
-        {activeTab === "advanced" && <div className="h-full overflow-y-auto p-3"><AdvancedPanel /></div>}
+        {selectedChartType === "batch-container" ? (
+          <div className="h-full overflow-y-auto p-3">
+            <BatchContainerPanel selectedChartConfig={selectedChartConfig} onUpdateChart={onUpdateChart} />
+          </div>
+        ) : (
+          <>
+            {activeTab === "customize" && <div className="h-full overflow-y-auto p-3"><CustomizePanel /></div>}
+            {activeTab === "animation" && <div className="h-full overflow-y-auto p-3"><PlaceholderPanel label="动画" /></div>}
+            {activeTab === "data" && <DataPanel selectedChartConfig={selectedChartConfig} onUpdateChart={onUpdateChart} />}
+            {activeTab === "advanced" && <div className="h-full overflow-y-auto p-3"><AdvancedPanel /></div>}
+          </>
+        )}
       </div>
     </div>
   );
@@ -1077,6 +1085,342 @@ function AdvancedPanel() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function BatchContainerPanel({ selectedChartConfig, onUpdateChart }: { selectedChartConfig: any; onUpdateChart: (updates: any) => void }) {
+  // 容器基础配置
+  const [containerName, setContainerName] = useState(selectedChartConfig?.containerName || "批量容器");
+  const [containerWidth, setContainerWidth] = useState(selectedChartConfig?.containerWidth || "420");
+  const [containerHeight, setContainerHeight] = useState(selectedChartConfig?.containerHeight || "280");
+  const [layoutMode, setLayoutMode] = useState(selectedChartConfig?.layoutMode || "grid");
+  const [horizontalGap, setHorizontalGap] = useState(selectedChartConfig?.horizontalGap || "10");
+  const [verticalGap, setVerticalGap] = useState(selectedChartConfig?.verticalGap || "10");
+  const [marginTop, setMarginTop] = useState(selectedChartConfig?.marginTop || "0");
+  const [marginBottom, setMarginBottom] = useState(selectedChartConfig?.marginBottom || "0");
+  const [marginLeft, setMarginLeft] = useState(selectedChartConfig?.marginLeft || "0");
+  const [marginRight, setMarginRight] = useState(selectedChartConfig?.marginRight || "0");
+
+  // 元组件配置
+  const [metaComponent, setMetaComponent] = useState(selectedChartConfig?.metaComponent || "indicator-card");
+  const [metaWidth, setMetaWidth] = useState(selectedChartConfig?.metaWidth || "120");
+  const [metaHeight, setMetaHeight] = useState(selectedChartConfig?.metaHeight || "100");
+  const [countMode, setCountMode] = useState(selectedChartConfig?.countMode || "fixed");
+  const [fixedCount, setFixedCount] = useState(selectedChartConfig?.fixedCount || "6");
+  const [dataSource, setDataSource] = useState(selectedChartConfig?.dataSource || "device-data");
+
+  // 样式配置
+  const [containerBackground, setContainerBackground] = useState(selectedChartConfig?.containerBackground || "#ffffff");
+  const [containerBorder, setContainerBorder] = useState(selectedChartConfig?.containerBorder || "#e2e8f0");
+  const [containerRadius, setContainerRadius] = useState(selectedChartConfig?.containerRadius || "4");
+  const [emptyText, setEmptyText] = useState(selectedChartConfig?.emptyText || "暂无数据");
+
+  // 保存配置
+  const handleSaveConfig = () => {
+    const config = {
+      containerName,
+      containerWidth,
+      containerHeight,
+      layoutMode,
+      horizontalGap,
+      verticalGap,
+      marginTop,
+      marginBottom,
+      marginLeft,
+      marginRight,
+      metaComponent,
+      metaWidth,
+      metaHeight,
+      countMode,
+      fixedCount,
+      dataSource,
+      containerBackground,
+      containerBorder,
+      containerRadius,
+      emptyText
+    };
+    onUpdateChart(config);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* 容器基础配置 */}
+      <div className="border border-slate-200 rounded-lg p-3">
+        <h3 className="text-[12px] text-slate-800 font-medium mb-3">容器基础配置</h3>
+        
+        <div className="space-y-3">
+          {/* 容器名称 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">容器名称</label>
+            <input
+              type="text"
+              value={containerName}
+              onChange={(e) => setContainerName(e.target.value)}
+              className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+            />
+          </div>
+
+          {/* 容器尺寸 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">容器尺寸</label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={containerWidth}
+                  onChange={(e) => setContainerWidth(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="宽度"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={containerHeight}
+                  onChange={(e) => setContainerHeight(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="高度"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 布局模式 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">布局模式</label>
+            <select
+              value={layoutMode}
+              onChange={(e) => setLayoutMode(e.target.value)}
+              className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+            >
+              <option value="grid">网格布局</option>
+              <option value="flow">流式布局</option>
+            </select>
+          </div>
+
+          {/* 间距配置 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">间距配置</label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={horizontalGap}
+                  onChange={(e) => setHorizontalGap(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="水平间距"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={verticalGap}
+                  onChange={(e) => setVerticalGap(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="垂直间距"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 边距配置 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">边距配置</label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <input
+                  type="number"
+                  value={marginTop}
+                  onChange={(e) => setMarginTop(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="上边距"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  value={marginBottom}
+                  onChange={(e) => setMarginBottom(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="下边距"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  value={marginLeft}
+                  onChange={(e) => setMarginLeft(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="左边距"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  value={marginRight}
+                  onChange={(e) => setMarginRight(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="右边距"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 元组件配置 */}
+      <div className="border border-slate-200 rounded-lg p-3">
+        <h3 className="text-[12px] text-slate-800 font-medium mb-3">元组件配置</h3>
+        
+        <div className="space-y-3">
+          {/* 元组件选择 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">元组件选择</label>
+            <select
+              value={metaComponent}
+              onChange={(e) => setMetaComponent(e.target.value)}
+              className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+            >
+              <option value="indicator-card">指标卡</option>
+              <option value="status-card">状态卡片</option>
+              <option value="mini-chart">迷你图表</option>
+            </select>
+          </div>
+
+          {/* 元组件尺寸 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">元组件尺寸</label>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={metaWidth}
+                  onChange={(e) => setMetaWidth(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="宽度"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={metaHeight}
+                  onChange={(e) => setMetaHeight(e.target.value)}
+                  className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+                  placeholder="高度"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 数量控制方式 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">数量控制方式</label>
+            <select
+              value={countMode}
+              onChange={(e) => setCountMode(e.target.value)}
+              className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+            >
+              <option value="fixed">固定数量</option>
+              <option value="data-driven">数据源驱动</option>
+            </select>
+          </div>
+
+          {/* 固定数量 */}
+          {countMode === "fixed" && (
+            <div>
+              <label className="text-[11px] text-slate-600 mb-1 block">固定数量</label>
+              <input
+                type="number"
+                value={fixedCount}
+                onChange={(e) => setFixedCount(e.target.value)}
+                className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+              />
+            </div>
+          )}
+
+          {/* 数据源绑定 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">数据源绑定</label>
+            <select
+              value={dataSource}
+              onChange={(e) => setDataSource(e.target.value)}
+              className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+            >
+              <option value="device-data">设备数据</option>
+              <option value="store-data">门店数据</option>
+              <option value="sensor-data">传感器数据</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 样式配置 */}
+      <div className="border border-slate-200 rounded-lg p-3">
+        <h3 className="text-[12px] text-slate-800 font-medium mb-3">样式配置</h3>
+        
+        <div className="space-y-3">
+          {/* 容器背景 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">容器背景</label>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded border border-slate-200" style={{ backgroundColor: containerBackground }} />
+              <input
+                type="text"
+                value={containerBackground}
+                onChange={(e) => setContainerBackground(e.target.value)}
+                className="flex-1 h-7 px-2 text-[12px] bg-slate-50 border border-slate-200 rounded outline-none focus:border-blue-400"
+              />
+            </div>
+          </div>
+
+          {/* 容器边框 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">容器边框</label>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded border border-slate-200" style={{ borderColor: containerBorder, backgroundColor: '#ffffff' }} />
+              <input
+                type="text"
+                value={containerBorder}
+                onChange={(e) => setContainerBorder(e.target.value)}
+                className="flex-1 h-7 px-2 text-[12px] bg-slate-50 border border-slate-200 rounded outline-none focus:border-blue-400"
+              />
+            </div>
+          </div>
+
+          {/* 容器圆角 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">容器圆角</label>
+            <input
+              type="range"
+              min="0"
+              max="20"
+              value={containerRadius}
+              onChange={(e) => setContainerRadius(e.target.value)}
+              className="w-full h-1 bg-slate-200 rounded-full appearance-none accent-blue-500"
+            />
+          </div>
+
+          {/* 空数据展示 */}
+          <div>
+            <label className="text-[11px] text-slate-600 mb-1 block">空数据展示</label>
+            <input
+              type="text"
+              value={emptyText}
+              onChange={(e) => setEmptyText(e.target.value)}
+              className="w-full h-7 px-2 text-[12px] border border-slate-200 rounded outline-none focus:border-blue-400"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 保存按钮 */}
+      <button
+        onClick={handleSaveConfig}
+        className="w-full h-8 bg-blue-500 text-white rounded text-[13px] font-medium hover:bg-blue-600 transition-colors"
+      >
+        保存配置
+      </button>
     </div>
   );
 }

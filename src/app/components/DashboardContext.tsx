@@ -95,6 +95,38 @@ export interface Download {
   status: string;
 }
 
+export interface DataModelField {
+  id: string;
+  modelId: string;
+  odsFieldName: string;
+  dwdFieldName: string;
+  fieldType: "字符串" | "整数" | "浮点数" | "日期" | "布尔";
+  fieldLength: number;
+  isPrimaryKey: boolean;
+  isNotNull: boolean;
+  valueRange: string;
+  defaultValue: string;
+  etlRules: string;
+  fieldComment: string;
+  sortOrder: number;
+}
+
+export interface DataModel {
+  id: string;
+  name: string;
+  code: string;
+  modelType: "事实表" | "维度表";
+  dataSourceId: string;
+  dataSourceName: string;
+  status: "草稿" | "已发布";
+  referenceCount: number;
+  creator: string;
+  createdAt: string;
+  updatedAt: string;
+  publishTime?: string;
+  fields: DataModelField[];
+}
+
 export interface DataSet {
   id: string;
   name: string;
@@ -115,6 +147,7 @@ interface DashboardContextType {
   templateCategories: TemplateCategory[];
   dataSources: DataSource[];
   dataSets: DataSet[];
+  dataModels: DataModel[];
   downloads: Download[];
   addProject: (name: string) => string;
   renameProject: (id: string, name: string) => void;
@@ -143,6 +176,15 @@ interface DashboardContextType {
   addDownload: (download: Omit<Download, "id">) => string;
   updateDownload: (id: string, updates: Partial<Download>) => void;
   deleteDownload: (id: string) => void;
+  addDataModel: (model: Omit<DataModel, "id" | "createdAt" | "updatedAt" | "referenceCount" | "fields" | "publishTime">) => string;
+  updateDataModel: (id: string, updates: Partial<DataModel>) => void;
+  deleteDataModel: (id: string) => void;
+  renameDataModel: (id: string, name: string) => void;
+  publishDataModel: (id: string) => void;
+  unpublishDataModel: (id: string) => void;
+  addDataModelField: (modelId: string, field: Omit<DataModelField, "id" | "modelId">) => string;
+  updateDataModelField: (modelId: string, fieldId: string, updates: Partial<DataModelField>) => void;
+  deleteDataModelField: (modelId: string, fieldId: string) => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | null>(null);
@@ -491,12 +533,15 @@ const initialDataSets: DataSet[] = [
   },
 ];
 
+const initialDataModels: DataModel[] = [];
+
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [dashboards, setDashboards] = useState<Dashboard[]>(initialDashboards);
   const [templates, setTemplates] = useState<Template[]>(initialTemplates);
   const [dataSources, setDataSources] = useState<DataSource[]>(initialDataSources);
   const [dataSets, setDataSets] = useState<DataSet[]>(initialDataSets);
+  const [dataModels, setDataModels] = useState<DataModel[]>(initialDataModels);
   const [downloads, setDownloads] = useState<Download[]>([]);
 
   const addProject = useCallback((name: string) => {
@@ -729,6 +774,96 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     setDownloads((prev) => prev.filter((download) => download.id !== id));
   }, []);
 
+  const addDataModel = useCallback((model: Omit<DataModel, "id" | "createdAt" | "updatedAt" | "referenceCount" | "fields">) => {
+    const id = `model-${Date.now()}`;
+    const now = new Date().toISOString();
+    setDataModels((prev) => [...prev, { ...model, id, createdAt: now, updatedAt: now, referenceCount: 0, fields: [] }]);
+    return id;
+  }, []);
+
+  const updateDataModel = useCallback((id: string, updates: Partial<DataModel>) => {
+    const now = new Date().toISOString();
+    setDataModels((prev) => prev.map((model) => (model.id === id ? { ...model, ...updates, updatedAt: now } : model)));
+  }, []);
+
+  const deleteDataModel = useCallback((id: string) => {
+    setDataModels((prev) => prev.filter((model) => model.id !== id));
+  }, []);
+
+  const renameDataModel = useCallback((id: string, name: string) => {
+    setDataModels((prev) => prev.map((model) => (model.id === id ? { ...model, name, updatedAt: new Date().toISOString() } : model)));
+  }, []);
+
+  const publishDataModel = useCallback((id: string) => {
+    const now = new Date().toISOString();
+    setDataModels((prev) => prev.map((model) => {
+      if (model.id === id) {
+        return {
+          ...model,
+          status: "已发布",
+          publishTime: model.publishTime || now,
+          updatedAt: now
+        };
+      }
+      return model;
+    }));
+  }, []);
+
+  const unpublishDataModel = useCallback((id: string) => {
+    const now = new Date().toISOString();
+    setDataModels((prev) => prev.map((model) => {
+      if (model.id === id) {
+        return {
+          ...model,
+          status: "草稿",
+          updatedAt: now
+        };
+      }
+      return model;
+    }));
+  }, []);
+
+  const addDataModelField = useCallback((modelId: string, field: Omit<DataModelField, "id" | "modelId">) => {
+    const id = `field-${Date.now()}`;
+    setDataModels((prev) => prev.map((model) => {
+      if (model.id === modelId) {
+        return {
+          ...model,
+          fields: [...model.fields, { ...field, id, modelId }],
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return model;
+    }));
+    return id;
+  }, []);
+
+  const updateDataModelField = useCallback((modelId: string, fieldId: string, updates: Partial<DataModelField>) => {
+    setDataModels((prev) => prev.map((model) => {
+      if (model.id === modelId) {
+        return {
+          ...model,
+          fields: model.fields.map((field) => (field.id === fieldId ? { ...field, ...updates } : field)),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return model;
+    }));
+  }, []);
+
+  const deleteDataModelField = useCallback((modelId: string, fieldId: string) => {
+    setDataModels((prev) => prev.map((model) => {
+      if (model.id === modelId) {
+        return {
+          ...model,
+          fields: model.fields.filter((field) => field.id !== fieldId),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return model;
+    }));
+  }, []);
+
   return (
     <DashboardContext.Provider
       value={{
@@ -738,6 +873,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         templateCategories,
         dataSources,
         dataSets,
+        dataModels,
         downloads,
         addProject,
         renameProject,
@@ -766,6 +902,15 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         addDownload,
         updateDownload,
         deleteDownload,
+        addDataModel,
+        updateDataModel,
+        deleteDataModel,
+        renameDataModel,
+        publishDataModel,
+        unpublishDataModel,
+        addDataModelField,
+        updateDataModelField,
+        deleteDataModelField,
       }}
     >
       {children}

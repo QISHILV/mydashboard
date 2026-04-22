@@ -379,6 +379,7 @@ export function DashboardEditor() {
                     datasetId={item.datasetId}
                     dimensions={item.dimensions}
                     metrics={item.metrics}
+                    selectedChartConfig={item}
                   />
                 </div>
 

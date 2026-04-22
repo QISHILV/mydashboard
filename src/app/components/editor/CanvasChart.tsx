@@ -57,9 +57,10 @@ interface CanvasChartProps {
   datasetId?: string;
   dimensions?: any[];
   metrics?: any[];
+  selectedChartConfig?: any;
 }
 
-export function CanvasChart({ type, width, height, datasetId, dimensions, metrics }: CanvasChartProps) {
+export function CanvasChart({ type, width, height, datasetId, dimensions, metrics, selectedChartConfig }: CanvasChartProps) {
   const chartHeight = height - 8;
   
   // Generate dynamic data based on dimensions and metrics
@@ -241,14 +242,91 @@ export function CanvasChart({ type, width, height, datasetId, dimensions, metric
       );
 
     case "batch-container":
+      // 从配置中获取参数，或使用默认值
+      const containerConfig = {
+        layoutMode: selectedChartConfig?.layoutMode || "grid",
+        horizontalGap: parseInt(selectedChartConfig?.horizontalGap || "10"),
+        verticalGap: parseInt(selectedChartConfig?.verticalGap || "10"),
+        marginTop: parseInt(selectedChartConfig?.marginTop || "0"),
+        marginBottom: parseInt(selectedChartConfig?.marginBottom || "0"),
+        marginLeft: parseInt(selectedChartConfig?.marginLeft || "0"),
+        marginRight: parseInt(selectedChartConfig?.marginRight || "0"),
+        metaWidth: parseInt(selectedChartConfig?.metaWidth || "120"),
+        metaHeight: parseInt(selectedChartConfig?.metaHeight || "100"),
+        countMode: selectedChartConfig?.countMode || "fixed",
+        fixedCount: parseInt(selectedChartConfig?.fixedCount || "6"),
+        containerBackground: selectedChartConfig?.containerBackground || "#ffffff",
+        containerBorder: selectedChartConfig?.containerBorder || "#e2e8f0",
+        containerRadius: parseInt(selectedChartConfig?.containerRadius || "4"),
+        emptyText: selectedChartConfig?.emptyText || "暂无数据"
+      };
+
+      // 生成模拟数据
+      const generateMockData = () => {
+        const data = [];
+        const count = containerConfig.countMode === "fixed" ? containerConfig.fixedCount : 8;
+        for (let i = 1; i <= count; i++) {
+          data.push({
+            id: i,
+            name: `设备 ${i}`,
+            value: Math.floor(Math.random() * 100),
+            status: Math.random() > 0.5 ? "在线" : "离线"
+          });
+        }
+        return data;
+      };
+
+      const mockData = generateMockData();
+
       return (
-        <div className="w-full h-full p-4">
-          <div className="flex flex-wrap gap-2 w-full h-full">
-            {[1, 2, 3, 4, 5, 6].map((item) => (
-              <div key={item} className="flex-1 min-w-[28%] aspect-square bg-blue-500 rounded-lg flex items-center justify-center text-white">
-                {item}
+        <div 
+          className="w-full h-full" 
+          style={{
+            paddingTop: `${containerConfig.marginTop}px`,
+            paddingBottom: `${containerConfig.marginBottom}px`,
+            paddingLeft: `${containerConfig.marginLeft}px`,
+            paddingRight: `${containerConfig.marginRight}px`
+          }}
+        >
+          <div 
+            className={`w-full h-full rounded-lg overflow-auto`} 
+            style={{
+              backgroundColor: containerConfig.containerBackground,
+              border: `1px solid ${containerConfig.containerBorder}`,
+              borderRadius: `${containerConfig.containerRadius}px`
+            }}
+          >
+            {mockData.length > 0 ? (
+              <div 
+                className={`p-4 ${containerConfig.layoutMode === "grid" ? "grid" : "flex flex-wrap"}`}
+                style={{
+                  gap: `${containerConfig.horizontalGap}px ${containerConfig.verticalGap}px`,
+                  gridTemplateColumns: containerConfig.layoutMode === "grid" 
+                    ? `repeat(auto-fill, minmax(${containerConfig.metaWidth}px, 1fr))` 
+                    : ""
+                }}
+              >
+                {mockData.map((item) => (
+                  <div 
+                    key={item.id} 
+                    className={`rounded-lg flex flex-col items-center justify-center text-white`}
+                    style={{
+                      width: containerConfig.layoutMode === "flow" ? `${containerConfig.metaWidth}px` : "",
+                      height: `${containerConfig.metaHeight}px`,
+                      backgroundColor: item.status === "在线" ? "#10b981" : "#ef4444"
+                    }}
+                  >
+                    <div className="text-sm font-medium">{item.name}</div>
+                    <div className="text-lg font-bold mt-1">{item.value}</div>
+                    <div className="text-xs mt-1">{item.status}</div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-400">
+                {containerConfig.emptyText}
+              </div>
+            )}
           </div>
         </div>
       );

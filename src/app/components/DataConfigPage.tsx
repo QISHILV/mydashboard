@@ -11,6 +11,8 @@ export function DataConfigPage() {
   return null;
 }
 
+export { DataModelsPage, CreateDataModelPage, EditDataModelPage } from "./DataModelsPage";
+
 // ============ Data Source Type Display Map ============
 const typeDisplayMap: Record<DataSourceType, string> = {
   mysql: "MySQL",
